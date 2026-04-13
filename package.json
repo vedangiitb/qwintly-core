@@ -1,0 +1,38 @@
+{
+  "name": "qwintly-ai-core",
+  "version": "1.0.0",
+  "description": "Qwintly AI Core",
+  "homepage": "https://github.com/qwintly/qwintly-ai-core#readme",
+  "bugs": {
+    "url": "https://github.com/qwintly/qwintly-ai-core/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qwintly/qwintly-ai-core.git"
+  },
+  "license": "ISC",
+  "author": "vedangiitb",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "test": "echo \"(no tests)\""
+  },
+  "peerDependencies": {
+    "@google/genai": "^1.33.0"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^24.10.4",
+    "typescript": "^5.9.3",
+    "@google/genai": "^1.33.0"
+  }
+}
