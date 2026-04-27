@@ -59,7 +59,7 @@ const buildToolStatusMessage = (name, effectiveArgs, readFileMeta) => {
     return `AI tool: ${name}`;
 };
 export async function runToolLoop(options) {
-    const { initialContents, tools, handlers, maxSteps = 30, model, toolCallingMode = FunctionCallingConfigMode.ANY, terminalToolNames = [], keepFullTrace = true, contextPolicy, aiCall, logger, applyPatchAutoRetryMax = 0, aiCallAutoRetryMax = 0, aiCallAutoRetryBaseMs = 400, aiCallAutoRetryMaxMs = 10000, } = options;
+    const { initialContents, tools, handlers, maxSteps = 30, model, toolCallingMode = FunctionCallingConfigMode.ANY, terminalToolNames = [], keepFullTrace = true, contextPolicy, aiCall, logger, applyPatchAutoRetryMax = 0, aiCallAutoRetryMax = 3, aiCallAutoRetryBaseMs = 400, aiCallAutoRetryMaxMs = 10000, } = options;
     if (typeof aiCall !== "function") {
         throw new Error("Tool loop: aiCall is required.");
     }
