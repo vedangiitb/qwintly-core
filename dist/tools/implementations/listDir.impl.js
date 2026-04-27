@@ -6,7 +6,7 @@ export const createListDirImpl = (deps) => {
     const MAX_LINES = 500;
     return async (dirPath, depth) => {
         const fullPath = toWorkspacePath(workspaceRoot, dirPath);
-        logger?.info?.(`Tool list_dir: ${fullPath} (depth=${depth})`);
+        logger?.info?.("Tool list_dir", { path: fullPath, depth });
         const effectiveDepth = Math.max(1, Math.min(3, depth ?? 1));
         try {
             const st = await fs.stat(fullPath);

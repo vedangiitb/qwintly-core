@@ -7,11 +7,10 @@ export const createWriteFileImpl = (deps: WorkspaceDeps) => {
 
   return async (filePath: string, content: string) => {
     const fullPath = toWorkspacePath(workspaceRoot, filePath);
-    logger?.info?.(`Tool write_file: ${fullPath}`);
+    logger?.info?.("Tool write_file", { path: fullPath });
 
     await fs.mkdirp(path.dirname(fullPath));
     await fs.writeFile(fullPath, content ?? "");
     return { ok: true };
   };
 };
-

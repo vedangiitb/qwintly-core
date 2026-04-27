@@ -5,7 +5,7 @@ export const createReadFileImpl = (deps) => {
     const { workspaceRoot, fs, logger } = deps;
     return async (filePath, startLine, endLine) => {
         const fullPath = toWorkspacePath(workspaceRoot, filePath);
-        logger?.info?.(`Tool read_file: ${fullPath}`);
+        logger?.info?.("Tool read_file", { path: fullPath });
         try {
             await fs.stat(fullPath);
         }
@@ -13,6 +13,7 @@ export const createReadFileImpl = (deps) => {
             const code = err?.code;
             if (code === "ENOENT")
                 return DEFAULT_NOT_FOUND_RESPONSE;
+            logger?.error?.("Tool read_file failed", err, { path: fullPath });
             throw err;
         }
         const content = await fs.readFile(fullPath);

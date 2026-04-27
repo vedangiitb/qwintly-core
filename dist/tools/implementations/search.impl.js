@@ -34,7 +34,7 @@ export const createSearchImpl = (deps) => {
     const execRg = deps.execRg ?? defaultExecRg;
     return async (searchQuery) => {
         const trimmed = (searchQuery ?? "").trim();
-        logger?.info?.(`Tool search: "${trimmed}"`);
+        logger?.info?.("Tool search", { query: trimmed });
         if (!trimmed)
             return [];
         try {
@@ -66,7 +66,7 @@ export const createSearchImpl = (deps) => {
         }
         catch (err) {
             const message = err instanceof Error ? err.message : String(err);
-            logger?.error?.(`Tool search failed for "${trimmed}": ${message}`);
+            logger?.error?.("Tool search failed", err, { query: trimmed, message });
             return [];
         }
     };

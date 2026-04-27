@@ -37,8 +37,29 @@ const computeBackoffMs = (attempt, baseMs, maxMs) => {
     const jitter = capped * (0.2 * Math.random());
     return Math.round(capped + jitter);
 };
+const buildToolStatusMessage = (name, effectiveArgs, readFileMeta) => {
+    if (name === "read_file" && readFileMeta) {
+        return `AI tool: read_file (${readFileMeta.start}-${readFileMeta.end}${readFileMeta.wasCapped ? ", capped" : ""})`;
+    }
+    if (name === "apply_patch") {
+        const meta = getApplyPatchEventMeta(effectiveArgs);
+        const files = Array.isArray(meta.files) ? meta.files.length : 0;
+        return `AI tool: apply_patch (${files} file${files === 1 ? "" : "s"})`;
+    }
+    if (name === "search")
+        return "AI tool: search";
+    if (name === "list_dir")
+        return "AI tool: list_dir";
+    if (name === "write_file")
+        return "AI tool: write_file";
+    if (name === "submit_planner_tasks")
+        return "AI tool: submit_planner_tasks";
+    if (name === "submit_codegen_done")
+        return "AI tool: submit_codegen_done";
+    return `AI tool: ${name}`;
+};
 export async function runToolLoop(options) {
-    const { initialContents, tools, handlers, maxSteps = 30, model, toolCallingMode = FunctionCallingConfigMode.ANY, terminalToolNames = [], keepFullTrace = true, contextPolicy, aiCall, logger, applyPatchAutoRetryMax = 0, aiCallAutoRetryMax = 3, aiCallAutoRetryBaseMs = 400, aiCallAutoRetryMaxMs = 10000, } = options;
+    const { initialContents, tools, handlers, maxSteps = 30, model, toolCallingMode = FunctionCallingConfigMode.ANY, terminalToolNames = [], keepFullTrace = true, contextPolicy, aiCall, logger, applyPatchAutoRetryMax = 0, aiCallAutoRetryMax = 0, aiCallAutoRetryBaseMs = 400, aiCallAutoRetryMaxMs = 10000, } = options;
     if (typeof aiCall !== "function") {
         throw new Error("Tool loop: aiCall is required.");
     }
@@ -67,7 +88,10 @@ export async function runToolLoop(options) {
         });
         if (policy.logApproxModelChars) {
             const approxChars = JSON.stringify(modelContents).length;
-            logger?.info?.(`Tool loop: approx model chars=${approxChars} step=${step + 1}`);
+            logger?.info?.("Tool loop: approx model chars", {
+                approxChars,
+                step: step + 1,
+            });
         }
         let response;
         {
@@ -89,7 +113,13 @@ export async function runToolLoop(options) {
                     retryCount += 1;
                     const delayMs = computeBackoffMs(retryCount, aiCallAutoRetryBaseMs, aiCallAutoRetryMaxMs);
                     const msg = err instanceof Error ? err.message : String(err);
-                    logger?.warn?.(`Tool loop: aiCall failed (retry ${retryCount}/${aiCallAutoRetryMax}) transient=${transient}: ${msg}. Retrying in ${delayMs}ms...`);
+                    logger?.warn?.("Tool loop: aiCall failed; retrying", {
+                        retryCount,
+                        aiCallAutoRetryMax,
+                        transient,
+                        delayMs,
+                        message: msg,
+                    });
                     await sleep(delayMs);
                 }
             }
@@ -124,6 +154,11 @@ export async function runToolLoop(options) {
                     wasCapped: normalized.wasCapped,
                 };
             }
+            // User-facing status ping for every tool call (kept intentionally non-sensitive).
+            logger?.status?.(buildToolStatusMessage(name, effectiveArgs, readFileMeta), {
+                tool: name,
+                step: step + 1,
+            });
             const modelArgs = redactFunctionCallArgs(name, effectiveArgs);
             const assistantFull = {
                 role: "model",
@@ -153,7 +188,19 @@ export async function runToolLoop(options) {
             else {
                 pushModelOnly(assistantModel);
             }
-            const toolResultRaw = await handler(effectiveArgs);
+            let toolResultRaw;
+            try {
+                toolResultRaw = await handler(effectiveArgs);
+            }
+            catch (err) {
+                logger?.status?.(`AI tool: ${name} failed`, { tool: name, step: step + 1 });
+                logger?.error?.("Tool loop: handler threw", err, {
+                    tool: name,
+                    step: step + 1,
+                });
+                const msg = err instanceof Error ? err.message : String(err);
+                throw new Error(`Tool loop: handler "${name}" threw: ${msg}`);
+            }
             let toolResult = toolResultRaw;
             if (name === "read_file" && readFileMeta) {
                 const path = String(effectiveArgs.path ?? "");

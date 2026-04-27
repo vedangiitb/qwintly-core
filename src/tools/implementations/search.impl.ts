@@ -57,7 +57,7 @@ export const createSearchImpl = (deps: SearchDeps) => {
 
   return async (searchQuery: string): Promise<SearchResult[]> => {
     const trimmed = (searchQuery ?? "").trim();
-    logger?.info?.(`Tool search: "${trimmed}"`);
+    logger?.info?.("Tool search", { query: trimmed });
 
     if (!trimmed) return [];
 
@@ -91,9 +91,8 @@ export const createSearchImpl = (deps: SearchDeps) => {
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      logger?.error?.(`Tool search failed for "${trimmed}": ${message}`);
+      logger?.error?.("Tool search failed", err, { query: trimmed, message });
       return [];
     }
   };
 };
-

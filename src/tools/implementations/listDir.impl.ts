@@ -9,7 +9,7 @@ export const createListDirImpl = (deps: WorkspaceDeps) => {
 
   return async (dirPath: string, depth: number) => {
     const fullPath = toWorkspacePath(workspaceRoot, dirPath);
-    logger?.info?.(`Tool list_dir: ${fullPath} (depth=${depth})`);
+    logger?.info?.("Tool list_dir", { path: fullPath, depth });
 
     const effectiveDepth = Math.max(1, Math.min(3, depth ?? 1)) as 1 | 2 | 3;
 
@@ -49,4 +49,3 @@ export const createListDirImpl = (deps: WorkspaceDeps) => {
     return lines.join("\n");
   };
 };
-

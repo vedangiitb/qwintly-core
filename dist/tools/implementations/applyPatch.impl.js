@@ -68,7 +68,7 @@ export const createApplyPatchImpl = (deps) => {
                 }
                 const fullPath = toWorkspacePath(workspaceRoot, op.filePath);
                 if (op.kind === "delete") {
-                    logger?.info?.(`Tool apply_patch (delete): ${fullPath}`);
+                    logger?.info?.("Tool apply_patch (delete)", { path: fullPath });
                     try {
                         await fs.rmFile(fullPath);
                         changed = true;
@@ -80,7 +80,7 @@ export const createApplyPatchImpl = (deps) => {
                     continue;
                 }
                 if (op.kind === "add") {
-                    logger?.info?.(`Tool apply_patch (add): ${fullPath}`);
+                    logger?.info?.("Tool apply_patch (add)", { path: fullPath });
                     try {
                         const { content: after, changed: opChanged } = applyHunksToContent("", op.hunks);
                         await fs.mkdirp(path.dirname(fullPath));
@@ -96,7 +96,7 @@ export const createApplyPatchImpl = (deps) => {
                     continue;
                 }
                 if (op.kind === "update") {
-                    logger?.info?.(`Tool apply_patch (update): ${fullPath}`);
+                    logger?.info?.("Tool apply_patch (update)", { path: fullPath });
                     try {
                         try {
                             await fs.stat(fullPath);
@@ -113,7 +113,10 @@ export const createApplyPatchImpl = (deps) => {
                         const { content: after, changed: contentChanged } = applyHunksToContent(before, op.hunks);
                         if (op.moveTo && op.moveTo !== op.filePath) {
                             const moveToPath = toWorkspacePath(workspaceRoot, op.moveTo);
-                            logger?.info?.(`Tool apply_patch (move): ${fullPath} -> ${moveToPath}`);
+                            logger?.info?.("Tool apply_patch (move)", {
+                                from: fullPath,
+                                to: moveToPath,
+                            });
                             await fs.mkdirp(path.dirname(moveToPath));
                             await fs.writeFile(moveToPath, after);
                             await fs.rmFile(fullPath);
@@ -138,7 +141,7 @@ export const createApplyPatchImpl = (deps) => {
         }
         catch (err) {
             const message = err instanceof Error ? err.message : String(err);
-            logger?.error?.(`Tool apply_patch failed: ${message}`);
+            logger?.error?.("Tool apply_patch failed", err, { message });
             try {
                 if (debugFiles.length < 3) {
                     const paths = parsedOps

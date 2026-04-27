@@ -7,13 +7,14 @@ export const createReadFileImpl = (deps: WorkspaceDeps) => {
 
   return async (filePath: string, startLine?: number, endLine?: number) => {
     const fullPath = toWorkspacePath(workspaceRoot, filePath);
-    logger?.info?.(`Tool read_file: ${fullPath}`);
+    logger?.info?.("Tool read_file", { path: fullPath });
 
     try {
       await fs.stat(fullPath);
     } catch (err) {
       const code = (err as NodeJS.ErrnoException | null)?.code;
       if (code === "ENOENT") return DEFAULT_NOT_FOUND_RESPONSE;
+      logger?.error?.("Tool read_file failed", err, { path: fullPath });
       throw err;
     }
 
@@ -21,4 +22,3 @@ export const createReadFileImpl = (deps: WorkspaceDeps) => {
     return sliceByLines(content, startLine, endLine);
   };
 };
-

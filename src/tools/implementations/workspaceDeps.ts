@@ -1,7 +1,10 @@
+export type LogMeta = Record<string, unknown>;
+
 export type CoreLogger = {
-  info?: (message: string) => void;
-  warn?: (message: string) => void;
-  error?: (message: string) => void;
+  status: (message: string, meta?: LogMeta) => void;
+  info?: (message: string, meta?: LogMeta) => void;
+  warn?: (message: string, meta?: LogMeta) => void;
+  error?: (message: string, err?: unknown, meta?: LogMeta) => void;
 };
 
 export type CoreDirent = {
@@ -26,4 +29,3 @@ export type WorkspaceDeps = {
 };
 
 export const DEFAULT_NOT_FOUND_RESPONSE = "not found";
-

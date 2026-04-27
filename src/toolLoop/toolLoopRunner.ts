@@ -24,9 +24,14 @@ export type ToolLoopResult = {
 };
 
 export type ToolLoopLogger = {
-  info?: (message: string) => void;
-  warn?: (message: string) => void;
-  error?: (message: string) => void;
+  status: (message: string, meta?: Record<string, unknown>) => void;
+  info?: (message: string, meta?: Record<string, unknown>) => void;
+  warn?: (message: string, meta?: Record<string, unknown>) => void;
+  error?: (
+    message: string,
+    err?: unknown,
+    meta?: Record<string, unknown>,
+  ) => void;
 };
 
 type AiCallFn = (
@@ -99,6 +104,32 @@ const computeBackoffMs = (attempt: number, baseMs: number, maxMs: number) => {
   return Math.round(capped + jitter);
 };
 
+const buildToolStatusMessage = (
+  name: string,
+  effectiveArgs: Record<string, unknown>,
+  readFileMeta: { start: number; end: number; wasCapped: boolean } | null,
+) => {
+  if (name === "read_file" && readFileMeta) {
+    return `AI tool: read_file (${readFileMeta.start}-${readFileMeta.end}${
+      readFileMeta.wasCapped ? ", capped" : ""
+    })`;
+  }
+
+  if (name === "apply_patch") {
+    const meta = getApplyPatchEventMeta(effectiveArgs);
+    const files = Array.isArray(meta.files) ? meta.files.length : 0;
+    return `AI tool: apply_patch (${files} file${files === 1 ? "" : "s"})`;
+  }
+
+  if (name === "search") return "AI tool: search";
+  if (name === "list_dir") return "AI tool: list_dir";
+  if (name === "write_file") return "AI tool: write_file";
+  if (name === "submit_planner_tasks") return "AI tool: submit_planner_tasks";
+  if (name === "submit_codegen_done") return "AI tool: submit_codegen_done";
+
+  return `AI tool: ${name}`;
+};
+
 export async function runToolLoop(
   options: RunToolLoopOptions,
 ): Promise<ToolLoopResult> {
@@ -115,7 +146,7 @@ export async function runToolLoop(
     aiCall,
     logger,
     applyPatchAutoRetryMax = 0,
-    aiCallAutoRetryMax = 3,
+    aiCallAutoRetryMax = 0,
     aiCallAutoRetryBaseMs = 400,
     aiCallAutoRetryMaxMs = 10_000,
   } = options;
@@ -152,7 +183,10 @@ export async function runToolLoop(
 
     if (policy.logApproxModelChars) {
       const approxChars = JSON.stringify(modelContents).length;
-      logger?.info?.(`Tool loop: approx model chars=${approxChars} step=${step + 1}`);
+      logger?.info?.("Tool loop: approx model chars", {
+        approxChars,
+        step: step + 1,
+      });
     }
 
     let response: Awaited<ReturnType<AiCallFn>>;
@@ -180,9 +214,13 @@ export async function runToolLoop(
             aiCallAutoRetryMaxMs,
           );
           const msg = err instanceof Error ? err.message : String(err);
-          logger?.warn?.(
-            `Tool loop: aiCall failed (retry ${retryCount}/${aiCallAutoRetryMax}) transient=${transient}: ${msg}. Retrying in ${delayMs}ms...`,
-          );
+          logger?.warn?.("Tool loop: aiCall failed; retrying", {
+            retryCount,
+            aiCallAutoRetryMax,
+            transient,
+            delayMs,
+            message: msg,
+          });
           await sleep(delayMs);
         }
       }
@@ -227,6 +265,12 @@ export async function runToolLoop(
         };
       }
 
+      // User-facing status ping for every tool call (kept intentionally non-sensitive).
+      logger?.status?.(buildToolStatusMessage(name, effectiveArgs, readFileMeta), {
+        tool: name,
+        step: step + 1,
+      });
+
       const modelArgs = redactFunctionCallArgs(name, effectiveArgs);
 
       const assistantFull = {
@@ -259,7 +303,18 @@ export async function runToolLoop(
         pushModelOnly(assistantModel);
       }
 
-      const toolResultRaw = await handler(effectiveArgs);
+      let toolResultRaw: unknown;
+      try {
+        toolResultRaw = await handler(effectiveArgs);
+      } catch (err) {
+        logger?.status?.(`AI tool: ${name} failed`, { tool: name, step: step + 1 });
+        logger?.error?.("Tool loop: handler threw", err, {
+          tool: name,
+          step: step + 1,
+        });
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`Tool loop: handler "${name}" threw: ${msg}`);
+      }
       let toolResult: unknown = toolResultRaw;
 
       if (name === "read_file" && readFileMeta) {
