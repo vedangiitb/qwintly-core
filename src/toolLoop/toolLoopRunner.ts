@@ -146,7 +146,7 @@ export async function runToolLoop(
     aiCall,
     logger,
     applyPatchAutoRetryMax = 0,
-    aiCallAutoRetryMax = 0,
+    aiCallAutoRetryMax = 3,
     aiCallAutoRetryBaseMs = 400,
     aiCallAutoRetryMaxMs = 10_000,
   } = options;
