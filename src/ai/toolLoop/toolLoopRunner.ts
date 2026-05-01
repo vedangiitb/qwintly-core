@@ -31,6 +31,11 @@ export type ToolLoopResult = {
 
 export type Logger = (message: string, eventType: EventType) => Promise<void>;
 
+export type AiCallResponse = {
+  functionCalls?: any[];
+  text?: string;
+};
+
 export type AiCallFn = (
   request: unknown,
   options: {
@@ -38,7 +43,7 @@ export type AiCallFn = (
     model?: string;
     toolCallingMode?: FunctionCallingConfigMode;
   },
-) => Promise<{ functionCalls?: any[]; text?: string }>;
+) => Promise<AiCallResponse>;
 
 export type RunToolLoopOptions = {
   initialContents: any[];

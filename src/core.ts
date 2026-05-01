@@ -1,9 +1,10 @@
-import { Tool } from "@google/genai";
+import { FunctionCallingConfigMode, Tool } from "@google/genai";
 import { getClient } from "./ai/generate/generateClient.js";
 import {
   runToolLoop,
   RunToolLoopOptions,
   ToolHandler,
+  ToolLoopResult,
 } from "./ai/toolLoop/toolLoopRunner.js";
 import { buildCodegenIndex } from "./indexer/codegenIndex.js";
 import { buildPlannerIndex } from "./indexer/plannerIndex.js";
@@ -13,62 +14,92 @@ import { statusService } from "./logging/genStatus.service.js";
 import { SendStatusToRedis } from "./logging/redis.service.js";
 import { ContextRepository } from "./repository/context.repository.js";
 import { GenStatusRepository } from "./repository/genStatus.repository.js";
-import { EventType } from "./types/events.js";
+import { EventType, GenStep } from "./types/events.js";
 import {
   CodegenIndex,
   PlannerIndex,
   ValidatorIndex,
 } from "./types/index/index.types.js";
+import type { ProjectInfo } from "./types/projectInfo.types.js";
+import { assertNonEmptyString } from "./utils/utils.js";
+
+export type QwintlyCoreOptions = {
+  chatId: string;
+  sessionId: string;
+  workspacePath: string;
+  source: string;
+  step: GenStep;
+  supabase: { endpoint: string; secret: string };
+  upstash: { url: string; token: string };
+  gemini: { apiKey: string; model?: string };
+};
+
+type AiResponseOptions = {
+  tools?: Tool[];
+  toolCallingMode?: FunctionCallingConfigMode;
+};
+
+type AiClient = {
+  aiResponse: (
+    request: unknown,
+    options?: AiResponseOptions,
+  ) => Promise<{
+    functionCalls?: any[];
+    text?: string;
+  }>;
+};
 
 export class QwintlyCore {
-  public chatId: string;
-  public sessionId: string;
-  public workspacePath: string;
-  public source: string;
-  public step: string;
-  public sbSecret: string;
-  public sbEndpoint: string;
-  public upstashUrl: string;
-  public upstashToken: string;
-  private geminiApiKey: string;
-  public aiClient: any;
-  public statusRepo: any;
-  public ctxRepo: any;
-  public redisStatusPublisher: any;
+  public readonly chatId: string;
+  public readonly sessionId: string;
+  public readonly workspacePath: string;
+  public readonly source: string;
+  public readonly step: GenStep;
 
-  constructor(
-    chatId: string,
-    sessionId: string,
-    workspacePath: string,
-    source: string,
-    step: string,
-    sbSecret: string,
-    sbEndpoint: string,
-    upstashUrl: string,
-    upstashToken: string,
-    geminiApiKey: string,
-  ) {
-    this.chatId = chatId;
-    this.sessionId = sessionId;
-    this.workspacePath = workspacePath;
-    this.source = source;
-    this.step = step;
-    this.sbSecret = sbSecret;
-    this.sbEndpoint = sbEndpoint;
-    this.upstashUrl = upstashUrl;
-    this.upstashToken = upstashToken;
-    this.geminiApiKey = geminiApiKey;
+  private readonly aiClient: AiClient;
+  private readonly statusRepo: GenStatusRepository;
+  private readonly ctxRepo: ContextRepository;
+  private readonly redisStatusPublisher: SendStatusToRedis;
 
-    this.aiClient = getClient("gemini", this.geminiApiKey);
+  constructor(options: QwintlyCoreOptions) {
+    assertNonEmptyString(options.chatId, "chatId");
+    assertNonEmptyString(options.sessionId, "sessionId");
+    assertNonEmptyString(options.workspacePath, "workspacePath");
+    assertNonEmptyString(options.source, "source");
+    assertNonEmptyString(options.step, "step");
+    assertNonEmptyString(options.supabase?.endpoint, "supabase.endpoint");
+    assertNonEmptyString(options.supabase?.secret, "supabase.secret");
+    assertNonEmptyString(options.upstash?.url, "upstash.url");
+    assertNonEmptyString(options.upstash?.token, "upstash.token");
+    assertNonEmptyString(options.gemini?.apiKey, "gemini.apiKey");
 
-    this.statusRepo = new GenStatusRepository(this.sbEndpoint, this.sbSecret);
-    this.ctxRepo = new ContextRepository(this.sbEndpoint, this.sbSecret);
-    this.redisStatusPublisher = new SendStatusToRedis(
-      this.upstashUrl,
-      this.upstashToken,
+    this.chatId = options.chatId;
+    this.sessionId = options.sessionId;
+    this.workspacePath = options.workspacePath;
+    this.source = options.source;
+    this.step = options.step;
+
+    this.aiClient = getClient(
+      "gemini",
+      options.gemini.apiKey,
+      options.gemini.model,
+    ) as AiClient;
+
+    this.statusRepo = new GenStatusRepository(
+      options.supabase.endpoint,
+      options.supabase.secret,
     );
+    this.ctxRepo = new ContextRepository(
+      options.supabase.endpoint,
+      options.supabase.secret,
+    );
+    this.redisStatusPublisher = new SendStatusToRedis(
+      options.upstash.url,
+      options.upstash.token,
+    );
+
     console.log(
-      `Qwintly Core successfully initialized for the session ${sessionId} for chat ${chatId}`,
+      `QwintlyCore initialized (chatId=${this.chatId}, sessionId=${this.sessionId})`,
     );
   }
 
@@ -78,14 +109,18 @@ export class QwintlyCore {
     handlers: Record<string, ToolHandler>,
     maxSteps: number,
     terminalToolNames: string[],
-  ) {
+  ): Promise<ToolLoopResult> {
     const toolLoopOptions: RunToolLoopOptions = {
       initialContents: initialContents,
       tools: tools,
       handlers: handlers,
       maxSteps: maxSteps,
       terminalToolNames: terminalToolNames,
-      aiCall: this.aiClient.aiCall,
+      aiCall: (request, options) =>
+        this.aiClient.aiResponse(request, {
+          tools: options.tools,
+          toolCallingMode: options.toolCallingMode,
+        }),
       logger: this.streamLog.bind(this),
     };
 
@@ -93,7 +128,8 @@ export class QwintlyCore {
     return result;
   }
 
-  public async streamLog(message: string, eventType: EventType) {
+  public async streamLog(message: string, eventType: EventType): Promise<void> {
+    assertNonEmptyString(message, "message");
     await statusService(
       this.chatId,
       this.sessionId,
@@ -102,13 +138,19 @@ export class QwintlyCore {
       message,
       this.source,
       {
-        repository: this.statusRepo,
-        publisher: this.redisStatusPublisher,
+        repository: {
+          persist: this.statusRepo.persistStatusMessage.bind(this.statusRepo),
+        },
+        publisher: {
+          publish: this.redisStatusPublisher.sendStatusToRedis.bind(
+            this.redisStatusPublisher,
+          ),
+        },
       },
     );
   }
 
-  public async buildProjectInfoIdx() {
+  public async buildProjectInfoIdx(): Promise<ProjectInfo> {
     const projectInfo = await computeProjectInfo(this.workspacePath);
 
     await this.ctxRepo.updateProjectInfo(this.chatId, projectInfo);
