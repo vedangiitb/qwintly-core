@@ -134,7 +134,11 @@ export class QwintlyCore {
     return result;
   }
 
-  public async streamLog(message: string, eventType: EventType): Promise<void> {
+  public async streamLog(
+    message: string,
+    eventType: EventType,
+    displayedSummary: boolean = false,
+  ): Promise<void> {
     try {
       assertNonEmptyString(message, "message");
       await statusService(
@@ -154,6 +158,7 @@ export class QwintlyCore {
             ),
           },
         },
+        displayedSummary,
       );
     } catch (error) {
       console.error(error);
