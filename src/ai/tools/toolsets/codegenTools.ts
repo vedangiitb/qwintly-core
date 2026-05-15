@@ -14,8 +14,8 @@ export const codegenTools = (): Tool[] => {
       functionDeclarations: [
         ReadFileSchema,
         CreateNewRouteSchema,
-        DeleteElementSchema,
         InsertElementSchema,
+        DeleteElementSchema,
         UpdateClassNameSchema,
         UpdatePropsSchema,
         ListDirSchema,
