@@ -117,13 +117,13 @@ export const BuilderElementSchema: any = {
       type: Type.ARRAY,
       description:
         "Nested children. Used by 'fragment' and 'div' directly, and by 'button'/'link' when present (otherwise they use props.text).",
-      items: {},
+      items: {
+        type: Type.OBJECT,
+      },
     },
   },
   required: ["type"],
 };
-
-BuilderElementSchema.properties.children.items = BuilderElementSchema;
 
 export const InsertElementSchema = {
   name: "insert_element",
