@@ -1,4 +1,4 @@
-import { CodegenIndex, CollectedContext } from "../../types/public.js";
+import { CodegenIndex, CollectedContext, PlanTask } from "../../types/public.js";
 import { codegenExamples } from "./examples/codegen.examples.js";
 import {
   jsonBlock,
@@ -7,7 +7,7 @@ import {
 } from "./helpers/promptParts.helper.js";
 
 export type CodegenNodePromptParams = {
-  task: string;
+  task: any;
   codegenIndex: CodegenIndex;
   collectedContext: CollectedContext;
   isNewProject: boolean;
