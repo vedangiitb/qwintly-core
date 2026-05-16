@@ -93,39 +93,47 @@ const BuilderElementPropsSchema = {
   },
 };
 
-// Recursive via JSON Schema $ref (no cyclic JS object needed).
-// This lets the model emit arbitrarily deep nested `children` safely.
-export const BuilderElementSchema: any = {
-  type: Type.OBJECT,
-  properties: {
-    type: {
-      type: Type.STRING,
-      enum: ELEMENT_TYPES,
-      description:
-        "Element type to render. 'text' renders a <p>, 'image' renders an <img>, 'link' renders an <a>, 'icon' renders a Lucide icon, 'fragment' renders children only.",
-    },
-    className: {
-      type: Type.STRING,
-      description:
-        "Tailwind CSS className applied to the rendered element (Tailwind only).",
-    },
-    visible: {
-      type: Type.BOOLEAN,
-      description: "Whether the element should be shown.",
-    },
-    props: BuilderElementPropsSchema,
-    children: {
-      type: Type.ARRAY,
-      description:
-        "Nested children (each child is another element). Use children[].children[] for deeper nesting.",
-      items: {
-        // JSON Schema self-reference: the item is another BuilderElement
-        $ref: "#",
+// NOTE: Gemini tool `parameters` schemas reject `$ref`, so true recursion isn't available here.
+// We unroll nesting to a reasonable max depth; for deeper trees, insert in multiple steps.
+const buildBuilderElementSchema = (depth: number): any => {
+  return {
+    type: Type.OBJECT,
+    properties: {
+      type: {
+        type: Type.STRING,
+        enum: ELEMENT_TYPES,
+        description:
+          "Element type to render. 'text' renders a <p>, 'image' renders an <img>, 'link' renders an <a>, 'icon' renders a Lucide icon, 'fragment' renders children only.",
+      },
+      className: {
+        type: Type.STRING,
+        description:
+          "Tailwind CSS className applied to the rendered element (Tailwind only).",
+      },
+      visible: {
+        type: Type.BOOLEAN,
+        description: "Whether the element should be shown.",
+      },
+      props: BuilderElementPropsSchema,
+      children: {
+        type: Type.ARRAY,
+        description:
+          "Nested children. Each child is another element and can itself have children (children[].children[]...).",
+        items:
+          depth > 0
+            ? buildBuilderElementSchema(depth - 1)
+            : {
+                type: Type.OBJECT,
+                description:
+                  "Max depth reached in tool schema. If you need deeper nesting, insert the parent first, then insert children using the returned inserted_id as parent_id.",
+              },
       },
     },
-  },
-  required: ["type"],
+    required: ["type"],
+  };
 };
+
+export const BuilderElementSchema: any = buildBuilderElementSchema(6);
 
 export const InsertElementSchema = {
   name: "insert_element",
