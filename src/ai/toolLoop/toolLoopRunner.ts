@@ -243,23 +243,31 @@ export async function runToolLoop(
 
       if (name === "read_file" && readFileMeta) {
         const path = String(effectiveArgs.path ?? "");
-        const rawContent =
-          typeof (toolResultRaw as any)?.content === "string"
-            ? String((toolResultRaw as any).content)
-            : typeof toolResultRaw === "string"
-              ? toolResultRaw
-              : JSON.stringify(toolResultRaw ?? null);
 
-        toolResult = {
-          path,
-          start_line: readFileMeta.start,
-          end_line: readFileMeta.end,
-          truncated: readFileMeta.wasCapped,
-          content: rawContent,
-          note: readFileMeta.wasCapped
-            ? `Capped to ${policy.readFileDefaultMaxLines} lines. Request more with start_line/end_line.`
-            : undefined,
+        const jsonPayload =
+          (toolResultRaw as any)?.kind === "json" ? (toolResultRaw as any)?.json : undefined;
+        if (jsonPayload !== undefined) {
+          // Token-efficient: return JSON as structured data (no double-stringifying).
+          toolResult = { path, json: jsonPayload };
+        } else {
+          const rawContent =
+            typeof (toolResultRaw as any)?.content === "string"
+              ? String((toolResultRaw as any).content)
+              : typeof toolResultRaw === "string"
+                ? toolResultRaw
+                : JSON.stringify(toolResultRaw ?? null);
+
+          toolResult = {
+            path,
+            start_line: readFileMeta.start,
+            end_line: readFileMeta.end,
+            truncated: readFileMeta.wasCapped,
+            content: rawContent,
+            note: readFileMeta.wasCapped
+              ? `Capped to ${policy.readFileDefaultMaxLines} lines. Request more with start_line/end_line.`
+              : undefined,
           };
+        }
       }
 
       try {

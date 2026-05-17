@@ -144,7 +144,7 @@ export const InsertElementSchema = {
       route: {
         type: Type.STRING,
         description:
-          "The route to insert the element at. Example. '/' or '/about' etc.",
+          "The route to insert the element at. Example. '/' or '/about' etc. Use '/' for the landing page. Never send empty string. ",
       },
       parent_id: {
         type: Type.STRING,
