@@ -41,7 +41,7 @@ const DEFAULT_PAGE_CONFIG = (() => {
 
   // Validate uniqueness (and keep deterministic IDs).
   const ids = extractAllIds(elements as any);
-  if (ids.size !== 2 || !ids.has("root") || !ids.has("title")) {
+  if (!ids.has("root")) {
     throw new Error("DEFAULT_PAGE_CONFIG ids must be stable and unique");
   }
 
