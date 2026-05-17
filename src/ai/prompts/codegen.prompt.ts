@@ -50,6 +50,7 @@ export const codegenPrompt = (params: CodegenNodePromptParams) => {
       Rules:
       - One insert_element per tree (include children inline) unless depth blocks it.
       - Create missing routes with create_new_route.
+      - For any tool arg named route, always use URL paths with forward slashes (e.g. '/', '/pricing'); never use '\\' or filesystem paths like 'app/pricing'.
       - image src auto-generated from alt
       - lucide-react icons only
     `.trim(),
