@@ -89,8 +89,8 @@ export const projectConfigs = {
 
       dont: [
         "don't treat routes as file paths",
-        "don't modify page.tsx",
         "don't generate React layout components",
+        "You are not allowed to modify anything other than pageConfig.json. Edits to page.tsx, layout.tsx, global.css, tailwind.config.ts are strictly prohibited. You can however create new routes with new pageConfig.json files but they will have fixed page.tsx.",
       ],
     },
   },
