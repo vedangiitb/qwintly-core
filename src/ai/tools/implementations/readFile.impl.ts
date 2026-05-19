@@ -1,9 +1,6 @@
 import { toWorkspacePath } from "../helpers/fileSystem.helpers.js";
 import { sliceByLines } from "../helpers/format.helpers.js";
-import {
-  DEFAULT_NOT_FOUND_RESPONSE,
-  type WorkspaceDeps,
-} from "./workspaceDeps.js";
+import { DEFAULT_NOT_FOUND_RESPONSE, type WorkspaceDeps } from "./workspaceDeps.js";
 
 export const createReadFileImpl = (deps: WorkspaceDeps) => {
   const { workspaceRoot, fs } = deps;
@@ -28,8 +25,8 @@ export const createReadFileImpl = (deps: WorkspaceDeps) => {
     if (isJson && !isRanged) {
       try {
         return { kind: "json", json: JSON.parse(content) as unknown };
-      } catch (e) {
-        console.error(e);
+      } catch {
+        // If JSON parsing fails (or file isn't actually JSON), fall back to text slicing.
       }
     }
 
