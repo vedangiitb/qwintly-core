@@ -44,6 +44,61 @@ export const redactFunctionCallArgs = (
   name: string,
   args: Record<string, unknown>,
 ) => {
+  const truncate = (value: string, max: number) => {
+    const v = String(value ?? "");
+    if (v.length <= max) return v;
+    if (max <= 3) return "...".slice(0, Math.max(0, max));
+    return v.slice(0, Math.max(0, max - 3)) + "...";
+  };
+
+  const firstTextPreview = (element: any): string | undefined => {
+    try {
+      if (!element || typeof element !== "object") return undefined;
+      if (element.type === "text") {
+        const t = element?.props?.text;
+        if (typeof t === "string" && t.trim()) return truncate(t.trim(), 80);
+      }
+      const children = element.children;
+      if (!Array.isArray(children)) return undefined;
+      for (const child of children) {
+        const preview = firstTextPreview(child);
+        if (preview) return preview;
+      }
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const summarizeElement = (element: any) => {
+    if (!element || typeof element !== "object") {
+      return { omitted: true, type: typeof element };
+    }
+    const type =
+      typeof (element as any).type === "string" ? (element as any).type : "unknown";
+    const className =
+      typeof (element as any).className === "string" ? (element as any).className : "";
+    const children = Array.isArray((element as any).children)
+      ? ((element as any).children as any[])
+      : [];
+    const text_preview = firstTextPreview(element);
+    return {
+      omitted: true,
+      type,
+      className_len: className.length,
+      className_preview: className ? truncate(className, 80) : undefined,
+      children_count: children.length,
+      text_preview,
+    };
+  };
+
+  if (name === "insert_element") {
+    return {
+      ...args,
+      element: summarizeElement((args as any).element),
+    };
+  }
+
   if (name !== "apply_patch") return args;
 
   const patch = typeof args.patch_string === "string" ? args.patch_string : "";
@@ -164,4 +219,3 @@ export const getApplyPatchEventMeta = (args: Record<string, unknown>) => {
     files: extractPatchFiles(patch),
   };
 };
-
