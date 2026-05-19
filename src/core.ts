@@ -213,14 +213,16 @@ export class QwintlyCore {
     return this.buildIndex(buildValidatorIndex);
   }
 
-  public async syncEditOps(genId: string, workspace: string) {
-    if (!genId) return;
+  public async syncEditOps(genId: string, workspace: string): Promise<boolean> {
+    if (!genId) return false;
     const projectOpsRepo = this.projectOpsRepo;
     const ops = await projectOpsRepo.fetchProjectOperations(genId);
-    if (!ops || ops.length === 0) return;
+    if (!ops || ops.length === 0) return false;
     const appliedIds = await applyOperations(ops, workspace);
     if (appliedIds.length > 0) {
       await projectOpsRepo.markOperationsApplied(appliedIds);
     }
+    const isModified = appliedIds.length > 0;
+    return isModified;
   }
 }
