@@ -39,6 +39,7 @@ export const codegenPrompt = (params: CodegenNodePromptParams) => {
       Available tools:
 
       - read_file: Read file
+      - update_global_styles: Update app/styleConfig.json global design tokens
       - list_dir: List directory
       - create_new_route: Create route with page.tsx + pageConfig.json
       - insert_element: Insert element tree
@@ -53,6 +54,7 @@ export const codegenPrompt = (params: CodegenNodePromptParams) => {
       - For any tool arg named route, always use URL paths with forward slashes (e.g. '/', '/pricing'); never use '\\' or filesystem paths like 'app/pricing'.
       - image src auto-generated from alt
       - lucide-react icons only
+      - Prefer semantic Tailwind tokens (bg-background, text-foreground, border-border, ring-ring, etc.) over hardcoded colors (e.g. slate-*, bg-white). If you need different global colors/radius, call update_global_styles first, then use token-based classes.
     `.trim(),
   );
 

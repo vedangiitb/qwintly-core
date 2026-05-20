@@ -1,8 +1,8 @@
 const examples = [
   `## Examples of tool calls
 
-### Example: \`insert_element\` (add a CTA section)
-Goal: Insert a new section under the page root on route \`/\`.
+  ### Example: \`insert_element\` (add a CTA section)
+  Goal: Insert a new section under the page root on route \`/\`.
 
 Tool call:
 \`\`\`json
@@ -11,19 +11,19 @@ Tool call:
   "parent_id": "root",
   "element": {
     "type": "div",
-    "className": "mt-10 flex items-center justify-between gap-6 rounded-2xl border border-slate-200 bg-white p-6",
+    "className": "mt-10 flex items-center justify-between gap-6 rounded-2xl border border-border bg-background p-6 text-foreground",
     "children": [
       {
         "type": "div",
         "className": "flex flex-col gap-1",
         "children": [
-          { "type": "text", "className": "text-lg font-semibold text-slate-900", "props": { "text": "Ready to get started?" } },
-          { "type": "text", "className": "text-sm text-slate-600", "props": { "text": "Create your first project in under a minute." } }
+          { "type": "text", "className": "text-lg font-semibold", "props": { "text": "Ready to get started?" } },
+          { "type": "text", "className": "text-sm text-muted-foreground", "props": { "text": "Create your first project in under a minute." } }
         ]
       },
       {
         "type": "button",
-        "className": "inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800",
+        "className": "inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90",
         "props": {
           "text": "Get Started",
           "onClick": { "kind": "route", "href": "/signup" }
@@ -34,10 +34,10 @@ Tool call:
 }
 \`\`\`
 
-Notes:
-- Always pass a complete \`className\` string (Tailwind only).
-- Use \`children\` to nest elements; children can themselves have \`children\` (deep nesting is supported).
-- Use the returned \`inserted_id\` for follow-up updates.`,
+  Notes:
+  - Always pass a complete \`className\` string (Tailwind only).
+  - Use \`children\` to nest elements; children can themselves have \`children\` (deep nesting is supported).
+  - Use the returned \`inserted_id\` for follow-up updates.`,
 
   `### Example: \`update_classname\` (replace className fully)
 Goal: Update styling on an existing element.

@@ -1,6 +1,5 @@
 import { resolveUnsplashImagesDeep } from "../../../image/unsplash.service.js";
 import type { BuilderElement } from "../../../types/elements.js";
-import { InsertElementArgsZod } from "../validators/builderElement.zod.js";
 import {
   ensureElementIds,
   extractAllIdsDeep,
@@ -10,6 +9,7 @@ import {
   stringifyPageConfigJson,
   writeFileAtomic,
 } from "../helpers/pageConfigJson.helpers.js";
+import { InsertElementArgsZod } from "../validators/builderElement.zod.js";
 import { type WorkspaceDeps } from "./workspaceDeps.js";
 
 export const createInsertElementImpl = (deps: WorkspaceDeps) => {

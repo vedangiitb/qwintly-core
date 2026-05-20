@@ -3,7 +3,7 @@ import { Type } from "@google/genai";
 export const UpdateClassNameSchema = {
   name: "update_classname",
   description:
-    "Updates className (only tailwind classes allowed). Give complete className.",
+    "Updates className (only tailwind classes allowed). Give complete className. Prefer semantic token classes (bg-background, text-foreground, border-border, ring-ring, etc.); use update_global_styles to change global tokens.",
   parameters: {
     type: Type.OBJECT,
     properties: {
