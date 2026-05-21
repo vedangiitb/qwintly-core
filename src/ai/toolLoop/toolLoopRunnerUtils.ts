@@ -32,34 +32,30 @@ export const serializeError = (err: unknown) => {
 };
 
 export const isTransientAiCallError = (err: unknown) => {
-  const anyErr = err as any;
+  let cur: any = err as any;
+  for (let depth = 0; depth < 4 && cur; depth++) {
+    const code =
+      cur?.error?.code ?? cur?.code ?? cur?.statusCode ?? cur?.response?.status;
 
-  const code =
-    anyErr?.error?.code ??
-    anyErr?.code ??
-    anyErr?.statusCode ??
-    anyErr?.response?.status;
+    const status =
+      cur?.error?.status ?? cur?.status ?? cur?.response?.data?.error?.status;
 
-  const status =
-    anyErr?.error?.status ??
-    anyErr?.status ??
-    anyErr?.response?.data?.error?.status;
+    const message =
+      cur?.error?.message ?? cur?.message ?? cur?.response?.data?.error?.message;
 
-  const message =
-    anyErr?.error?.message ??
-    anyErr?.message ??
-    anyErr?.response?.data?.error?.message;
+    const msg = typeof message === "string" ? message.toLowerCase() : "";
+    const stat = typeof status === "string" ? status.toUpperCase() : "";
 
-  const msg = typeof message === "string" ? message.toLowerCase() : "";
-  const stat = typeof status === "string" ? status.toUpperCase() : "";
+    if (code === 503) return true;
+    if (code === 429) return true;
+    if (stat === "UNAVAILABLE") return true;
+    if (stat === "RESOURCE_EXHAUSTED") return true;
+    if (msg.includes("high demand")) return true;
+    if (msg.includes("try again later")) return true;
+    if (msg.includes("temporar")) return true;
 
-  if (code === 503) return true;
-  if (code === 429) return true;
-  if (stat === "UNAVAILABLE") return true;
-  if (stat === "RESOURCE_EXHAUSTED") return true;
-  if (msg.includes("high demand")) return true;
-  if (msg.includes("try again later")) return true;
-  if (msg.includes("temporar")) return true;
+    cur = cur?.cause;
+  }
 
   return false;
 };

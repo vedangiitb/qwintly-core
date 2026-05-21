@@ -9,8 +9,11 @@ export const UpdateClassNameSchema = {
     properties: {
       route: {
         type: Type.STRING,
+        // Accept both "/about" and "about" (caller might omit the leading slash).
+        pattern:
+          "^(?:/(?:[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*)?)|(?:[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*)$)",
         description:
-          "The route to update the element at. Example. '/' or '/about' etc.",
+          "The route to update the element at. Example: '/' or '/about'. If you forget the leading '/', it will be assumed (e.g. 'about' -> '/about').",
       },
       element_id: {
         type: Type.STRING,

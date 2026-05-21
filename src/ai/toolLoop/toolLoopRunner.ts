@@ -141,16 +141,44 @@ export async function runToolLoop(
     }
 
     let response: Awaited<ReturnType<AiCallFn>>;
-    response = await aiCallWithRetry({
-      aiCall,
-      request: modelContents,
-      options: { tools, toolCallingMode },
-      retryMax: aiCallAutoRetryMax,
-      retryBaseMs: aiCallAutoRetryBaseMs,
-      retryMaxMs: aiCallAutoRetryMaxMs,
-      step: step + 1,
-      logger,
-    });
+    try {
+      response = await aiCallWithRetry({
+        aiCall,
+        request: modelContents,
+        options: { tools, toolCallingMode },
+        retryMax: aiCallAutoRetryMax,
+        retryBaseMs: aiCallAutoRetryBaseMs,
+        retryMaxMs: aiCallAutoRetryMaxMs,
+        step: step + 1,
+        logger,
+      });
+    } catch (err) {
+      logger(
+        "Tool loop: AI provider error; preserving context and continuing",
+        EVENT_TYPES.STEP_ERROR,
+      );
+      console.error("Tool loop: aiCall failed (provider/server side)", err, {
+        step: step + 1,
+        error: serializeError(err),
+      });
+
+      const message =
+        err instanceof Error ? err.message : JSON.stringify(err ?? null);
+      const providerErrorInstruction = {
+        role: "user",
+        parts: [
+          {
+            text:
+              `AI provider error (server-side). Do NOT clear or restart context; continue from the existing conversation state.\n` +
+              `Error: ${message}\n` +
+              `Next: retry the last request using the same context. If you were about to call tools, resend a valid tool call.`,
+          },
+        ],
+      };
+      if (keepFullTrace) fullTraceContents.push(providerErrorInstruction);
+      modelContents.push(providerErrorInstruction);
+      continue;
+    }
 
     if (persistResponse) {
       try {
@@ -177,7 +205,24 @@ export async function runToolLoop(
       const args = (call.args ?? {}) as Record<string, unknown>;
 
       if (!name) {
-        throw new Error("Tool loop: function call missing name.");
+        logger(
+          "Tool loop: malformed function call from model; preserving context and continuing",
+          EVENT_TYPES.STEP_ERROR,
+        );
+        const malformedInstruction = {
+          role: "user",
+          parts: [
+            {
+              text:
+                `Malformed function call received (missing tool name). Do NOT clear or restart context.\n` +
+                `Resend a single valid tool call with a non-empty name and JSON args.\n` +
+                `Bad call: ${JSON.stringify(call ?? null).slice(0, 1500)}`,
+            },
+          ],
+        };
+        if (keepFullTrace) fullTraceContents.push(malformedInstruction);
+        modelContents.push(malformedInstruction);
+        continue;
       }
 
       const handler = handlers[name];
