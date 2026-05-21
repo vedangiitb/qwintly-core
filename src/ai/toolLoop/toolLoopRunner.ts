@@ -61,6 +61,7 @@ export type RunToolLoopOptions = {
   aiCallAutoRetryMax?: number;
   aiCallAutoRetryBaseMs?: number;
   aiCallAutoRetryMaxMs?: number;
+  persistResponse?: (modelInput: any, modelOutput: any) => Promise<void>;
 };
 
 export async function runToolLoop(
@@ -81,6 +82,7 @@ export async function runToolLoop(
     aiCallAutoRetryMax = 3, // must have it to try 3 times as gemini errors a lot due to high demand sometimes
     aiCallAutoRetryBaseMs = 400,
     aiCallAutoRetryMaxMs = 10_000,
+    persistResponse,
   } = options;
 
   if (typeof aiCall !== "function") {
@@ -152,6 +154,16 @@ export async function runToolLoop(
       step: step + 1,
       logger,
     });
+
+    if (persistResponse) {
+      try {
+        await persistResponse(modelContents, response);
+      } catch (err) {
+        console.error("Tool loop: failed to persist response", err, {
+          step: step + 1,
+        });
+      }
+    }
 
     const functionCalls = response.functionCalls ?? [];
     if (functionCalls.length === 0) {
