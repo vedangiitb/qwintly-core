@@ -97,8 +97,25 @@ export async function runToolLoop(
   const toolEvents: ToolEvent[] = [];
   let applyPatchRetryCount = 0;
 
-  const fullTraceContents: any[] = keepFullTrace ? [...initialContents] : [];
-  let modelContents: any[] = [...initialContents];
+  const EXECUTION_GUIDE_MARKER = "TOOL_LOOP_EXECUTION_GUIDE_V1";
+  const executionGuideInstruction = {
+    role: "user",
+    parts: [
+      {
+        text:
+          `${EXECUTION_GUIDE_MARKER}\n` +
+          `Execution limit: At most ${maxSteps} assistant turn(s) in this tool loop. ` +
+          `One turn = one assistant response in the tool loop.\n` +
+          `Complete the task in as few turns as possible and avoid unnecessary actions. Prioritize correctness.`,
+      },
+    ],
+  };
+
+  const fullTraceContents: any[] = keepFullTrace
+    ? [...initialContents, executionGuideInstruction]
+    : [];
+  let modelContents: any[] = [...initialContents, executionGuideInstruction];
+  const pinnedInitialCount = initialContents.length + 1;
   const pushBoth = (fullItem: any, modelItem: any) => {
     if (keepFullTrace) fullTraceContents.push(fullItem);
     modelContents.push(modelItem);
@@ -108,28 +125,8 @@ export async function runToolLoop(
   };
 
   for (let step = 0; step < maxSteps; step++) {
-    const remaining = maxSteps - step;
-
-    const budgetInstruction = {
-      role: "user",
-      parts: [
-        {
-          text:
-            `Execution limit: ${remaining} turn(s) remaining including this one. ` +
-            `One turn = one assistant response in the tool loop. ` +
-            `Complete the task in as few turns as possible and avoid unnecessary actions. Prioritize correctness` +
-            `${remaining <= 5 ? `Approaching execution limit. Only ${remaining} turns left` : ""}`,
-        },
-      ],
-    };
-
-    if (keepFullTrace) {
-      fullTraceContents.push(budgetInstruction);
-    }
-    modelContents.push(budgetInstruction);
-
     modelContents = compactForModel({
-      initialCount: initialContents.length,
+      initialCount: pinnedInitialCount,
       modelContents,
       toolEvents,
       policy,
