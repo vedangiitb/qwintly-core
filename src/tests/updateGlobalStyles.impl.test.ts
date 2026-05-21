@@ -158,3 +158,23 @@ test("update_global_styles: unsafe/empty token value is rejected", async () => {
   }
 });
 
+test("update_global_styles: empty tokens patch is rejected", async () => {
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "qwintly-core-"));
+  try {
+    await fs.mkdir(path.join(workspaceRoot, "app"), { recursive: true });
+    await fs.writeFile(
+      path.join(workspaceRoot, "app", "styleConfig.json"),
+      JSON.stringify({ version: 1, tokens: { radius: "0.85rem" } }),
+      "utf-8",
+    );
+
+    const impl = createUpdateGlobalStylesImpl({ workspaceRoot, fs: makeRealFs() } as any);
+    const res = await impl({ tokens: {} as any });
+    assert.equal((res as any)?.success, false);
+
+    const stored = await readStyleConfig(workspaceRoot);
+    assert.equal(stored.version, 1);
+  } finally {
+    await fs.rm(workspaceRoot, { recursive: true, force: true });
+  }
+});

@@ -1,4 +1,5 @@
 import { Type } from "@google/genai";
+import { STYLE_TOKEN_KEYS } from "../../../types/styleConfig.js";
 
 export const UpdateGlobalStylesSchema = {
   name: "update_global_styles",
@@ -10,10 +11,13 @@ export const UpdateGlobalStylesSchema = {
       tokens: {
         type: Type.OBJECT,
         description:
-          "Partial tokens patch. Keys must be one of the StyleTokenKey values (see types/styleConfig.ts). Values must be non-empty safe CSS strings. Unknown keys are rejected.",
+          `Partial tokens patch (must include at least 1 key). Allowed keys: ${STYLE_TOKEN_KEYS.join(
+            ", ",
+          )}. Values must be non-empty safe CSS strings (e.g. '0.75rem' or 'oklch(0.62 0.16 199.4)'). Unknown keys are rejected.`,
+        minProperties: "1",
+        additionalProperties: { type: Type.STRING },
       },
     },
     required: ["tokens"],
   },
 };
-

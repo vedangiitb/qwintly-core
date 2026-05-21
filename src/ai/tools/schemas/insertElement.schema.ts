@@ -153,6 +153,11 @@ export const InsertElementSchema = {
         type: Type.STRING,
         description: "The parent id to insert the element at.",
       },
+      before_id: {
+        type: Type.STRING,
+        description:
+          "Optional. If provided, inserts the new element before the existing child element with this id (within parent_id's children list). If not found, appends at the end.",
+      },
       element: {
         ...BuilderElementSchema,
         description: "The element to insert.",

@@ -91,5 +91,6 @@ export const InsertElementArgsZod = z.object({
       }),
   ),
   parent_id: z.string().min(1),
+  before_id: z.string().min(1).optional(),
   element: BuilderElementZod,
 });

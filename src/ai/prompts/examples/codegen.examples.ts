@@ -9,6 +9,7 @@ Tool call:
 {
   "route": "/",
   "parent_id": "root",
+  "before_id": "el_existing_sibling_id",
   "element": {
     "type": "div",
     "className": "mt-10 flex items-center justify-between gap-6 rounded-2xl border border-border bg-background p-6 text-foreground",
@@ -37,6 +38,7 @@ Tool call:
   Notes:
   - Always pass a complete \`className\` string (Tailwind only).
   - Use \`children\` to nest elements; children can themselves have \`children\` (deep nesting is supported).
+  - Optional \`before_id\` inserts before an existing sibling; omit it to append at the end.
   - Use the returned \`inserted_id\` for follow-up updates.`,
 
   `### Example: \`update_classname\` (replace className fully)

@@ -39,6 +39,9 @@ export const createUpdateGlobalStylesImpl = (deps: WorkspaceDeps) => {
 
     const allowedKeys = new Set<string>(STYLE_TOKEN_KEYS as unknown as string[]);
     const patchKeys = Object.keys(tokensPatch);
+    if (patchKeys.length === 0) {
+      return { success: false, error: "tokens patch must not be empty" };
+    }
     const unknownKeys = patchKeys.filter((k) => !allowedKeys.has(k));
     if (unknownKeys.length > 0) {
       return {
@@ -107,4 +110,3 @@ export const createUpdateGlobalStylesImpl = (deps: WorkspaceDeps) => {
     }
   };
 };
-

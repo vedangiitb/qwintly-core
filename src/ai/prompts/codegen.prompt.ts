@@ -48,15 +48,17 @@ export const codegenPrompt = (params: CodegenNodePromptParams) => {
       - update_props: Update props
       - submit_codegen_done: Finish task
 
-      Rules:
-      - One insert_element per tree (include children inline) unless depth blocks it.
-      - Create missing routes with create_new_route.
-      - For any tool arg named route, always use URL paths with forward slashes (e.g. '/', '/pricing'); never use '\\' or filesystem paths like 'app/pricing'.
-      - image src auto-generated from alt
-      - lucide-react icons only
-      - Prefer semantic Tailwind tokens (bg-background, text-foreground, border-border, ring-ring, etc.) over hardcoded colors (e.g. slate-*, bg-white). If you need different global colors/radius, call update_global_styles first, then use token-based classes.
-    `.trim(),
-  );
+       Rules:
+       - One insert_element per tree (include children inline) unless depth blocks it.
+       - Create missing routes with create_new_route.
+       - For any tool arg named route, always use URL paths with forward slashes (e.g. '/', '/pricing'); never use '\\' or filesystem paths like 'app/pricing'.
+       - insert_element supports optional before_id to insert before an existing sibling; if omitted or not found, it appends to the end.
+       - image src auto-generated from alt
+       - lucide-react icons only
+       - Prefer semantic Tailwind tokens (bg-background, text-foreground, border-border, ring-ring, etc.) over hardcoded colors (e.g. slate-*, bg-white). If you need different global colors/radius, call update_global_styles first, then use token-based classes.
+       - Never call update_global_styles with an empty tokens object. Include at least one token key/value you want to change.
+     `.trim(),
+   );
 
   const projectConfiguration = mdSection(
     "Project Config",
