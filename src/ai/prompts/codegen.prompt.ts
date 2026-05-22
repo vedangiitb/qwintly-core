@@ -53,12 +53,14 @@ export const codegenPrompt = (params: CodegenNodePromptParams) => {
        - Create missing routes with create_new_route.
        - For any tool arg named route, always use URL paths with forward slashes (e.g. '/', '/pricing'); never use '\\' or filesystem paths like 'app/pricing'.
        - insert_element supports optional before_id to insert before an existing sibling; if omitted or not found, it appends to the end.
-       - image src auto-generated from alt
+       - Include images whenever mentoned to be included. Just use alt tag for images. image src auto-generated from alt
        - lucide-react icons only
-       - Prefer semantic Tailwind tokens (bg-background, text-foreground, border-border, ring-ring, etc.) over hardcoded colors (e.g. slate-*, bg-white). If you need different global colors/radius, call update_global_styles first, then use token-based classes.
+       - Prefer semantic Tailwind tokens (bg-background, text-foreground, border-border, ring-ring, etc.) over hardcoded colors (e.g. slate-*, bg-white) for global styles. If you need different global colors/radius, call update_global_styles first, then use token-based classes.
        - update_global_styles args MUST be a flat JSON object with token keys as optional params. Include at least 1 key.
-       - Never call update_global_styles with {} (empty object). If you don't need to change tokens, do not call this tool.
+       - While updating global styles make sure that the styles updating (ex. background, foreground) are used in the right places (using bg-background, text-foreground, etc.). If not include them by updating the classname using update_classname tool
+       - Never call update_global_styles with {} (empty object). If you don't need to change styles, do not call this tool.
        - Example: {"radius":"0.75rem","background":"oklch(0.98 0.01 80)"}.
+
      `.trim(),
    );
 

@@ -20,7 +20,7 @@ export const UpdateGlobalStylesSchema = {
       ),
     },
     description:
-      `Args are a flat object where each key is an optional token name; include at least 1 key. ` +
+      `Args are a flat object where each key is an optional token name; include at least 1 key. Use background for background color and foreground for text color, radius for border radius, etc.` +
       `Allowed keys: ${STYLE_TOKEN_KEYS.join(", ")}.`,
   },
 };
