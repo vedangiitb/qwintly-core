@@ -22,6 +22,19 @@ let unsplashConfig: UnsplashConfig | null = null;
 
 const cache = new Map<string, ResolvedImage>();
 
+async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), 5000);
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 export function initUnsplash(
   config: Partial<UnsplashConfig> | null | undefined,
 ) {
@@ -77,7 +90,7 @@ export async function searchUnsplashImage(
     per_page: "10",
   });
 
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${cfg.url}/search/photos?${params.toString()}`,
     {
       headers: {
@@ -110,7 +123,7 @@ export async function searchUnsplashImage(
   // Required by Unsplash API terms
   // Tracks image download usage
   if (selected.links.download_location) {
-    await fetch(selected.links.download_location, {
+    await fetchWithTimeout(selected.links.download_location, {
       headers: {
         Authorization: `Client-ID ${cfg.accessKey}`,
       },
