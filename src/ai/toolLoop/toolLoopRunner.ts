@@ -199,9 +199,42 @@ export async function runToolLoop(
       };
     }
 
-    for (const call of functionCalls) {
+    const signatureById = (() => {
+      try {
+        const candidates = Array.isArray((response as any)?.candidates)
+          ? ((response as any).candidates as any[])
+          : [];
+        const parts = candidates?.[0]?.content?.parts;
+        const arr = Array.isArray(parts) ? (parts as any[]) : [];
+        const map = new Map<string, string>();
+        for (const p of arr) {
+          const fc = p?.functionCall;
+          const id = fc?.id;
+          const sig = p?.thoughtSignature ?? p?.thought_signature;
+          if (typeof id === "string" && typeof sig === "string" && sig) {
+            map.set(id, sig);
+          }
+        }
+        return map;
+      } catch {
+        return new Map<string, string>();
+      }
+    })();
+
+    for (let callIndex = 0; callIndex < functionCalls.length; callIndex++) {
+      const call = functionCalls[callIndex];
       const name = call.name?.toString() ?? "";
       const args = (call.args ?? {}) as Record<string, unknown>;
+      const thoughtSignature: string | undefined = (() => {
+        const direct =
+          (call as any)?.thought_signature ?? (call as any)?.thoughtSignature;
+        if (typeof direct === "string" && direct) return direct;
+        const id = (call as any)?.id;
+        if (typeof id === "string" && signatureById.has(id)) {
+          return signatureById.get(id);
+        }
+        return undefined;
+      })();
 
       if (!name) {
         logger(
@@ -269,6 +302,7 @@ export async function runToolLoop(
             functionCall: {
               name,
               args: effectiveArgs,
+              ...(thoughtSignature ? { thought_signature: thoughtSignature } : {}),
             },
           },
         ],
@@ -281,6 +315,7 @@ export async function runToolLoop(
             functionCall: {
               name,
               args: modelArgs,
+              ...(thoughtSignature ? { thought_signature: thoughtSignature } : {}),
             },
           },
         ],
