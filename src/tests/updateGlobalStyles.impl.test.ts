@@ -319,4 +319,36 @@ test("update_global_styles: handles heavily nested/wrapped SDK responses", async
   }
 });
 
+test("update_global_styles: accepts malformed/unquoted JS object string", async () => {
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "qwintly-core-"));
+  try {
+    await fs.mkdir(path.join(workspaceRoot, "app"), { recursive: true });
+    const impl = createUpdateGlobalStylesImpl({ workspaceRoot, fs: makeRealFs() } as any);
+    // JS object literal format (invalid standard JSON)
+    const res = await impl("{ primary: 'oklch(0.6, 0.2, 260)' }");
+    assert.equal((res as any)?.success, true);
+
+    const stored = await readStyleConfig(workspaceRoot);
+    assert.equal(stored.tokens.primary, "oklch(0.6, 0.2, 260)");
+  } finally {
+    await fs.rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("update_global_styles: accepts single valid key/value", async () => {
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "qwintly-core-"));
+  try {
+    await fs.mkdir(path.join(workspaceRoot, "app"), { recursive: true });
+    const impl = createUpdateGlobalStylesImpl({ workspaceRoot, fs: makeRealFs() } as any);
+    const res = await impl({ primary: "oklch(0.6, 0.2, 260)" });
+    assert.equal((res as any)?.success, true);
+
+    const stored = await readStyleConfig(workspaceRoot);
+    assert.equal(stored.tokens.primary, "oklch(0.6, 0.2, 260)");
+  } finally {
+    await fs.rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+
 

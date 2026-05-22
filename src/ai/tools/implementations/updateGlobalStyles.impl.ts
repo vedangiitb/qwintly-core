@@ -34,6 +34,35 @@ const extractAllValidTokens = (value: unknown): Partial<Record<StyleTokenKey, st
   const visited = new WeakSet<object>();
 
   const traverse = (val: unknown) => {
+    if (typeof val === "string") {
+      const trimmedVal = val.trim();
+      if (!trimmedVal) return;
+
+      // Try to parse string as JSON first
+      try {
+        const parsed = JSON.parse(trimmedVal);
+        traverse(parsed);
+        return;
+      } catch {}
+
+      // If it's a string and not valid JSON, try to extract key-value patterns (e.g. key: "value", "key": 'value', etc.)
+      const regex = /(?:["']?([a-zA-Z0-9_-]+)["']?\s*:\s*["']([^"']+)["'])/g;
+      let match;
+      let foundAny = false;
+      while ((match = regex.exec(trimmedVal)) !== null) {
+        const [, k, v] = match;
+        if (allowed.has(k) && isSafeCssValue(v)) {
+          out[k] = v.trim();
+          foundAny = true;
+        }
+      }
+      if (foundAny) return;
+
+      // As a last resort, if the string itself is a safe value and allowed keys can be matched elsewhere,
+      // or if we want to handle a plain string value, but without a key we can't map it.
+      return;
+    }
+
     if (typeof val !== "object" || val === null) return;
     if (visited.has(val)) return;
     visited.add(val);
