@@ -176,7 +176,6 @@ export async function runToolLoop(
         ],
       };
       if (keepFullTrace) fullTraceContents.push(providerErrorInstruction);
-      modelContents.push(providerErrorInstruction);
       continue;
     }
 
