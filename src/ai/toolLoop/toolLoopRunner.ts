@@ -1,6 +1,7 @@
 import { FunctionCallingConfigMode, Tool } from "@google/genai";
 import { persistToolCall } from "../../services/toolcallPersist.service.js";
 import { EVENT_TYPES, EventType } from "../../types/events.js";
+import { STYLE_TOKEN_KEYS } from "../../types/styleConfig.js";
 import {
   compactForModel,
   DEFAULT_CONTEXT_POLICY,
@@ -69,6 +70,8 @@ export async function runToolLoop(
 ): Promise<ToolLoopResult> {
   const isPlainObject = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
+
+  const styleTokenKeySet = new Set<string>(STYLE_TOKEN_KEYS as unknown as string[]);
 
   const {
     initialContents,
@@ -348,15 +351,17 @@ export async function runToolLoop(
       } else {
         try {
           if (name === "update_global_styles") {
-            const tokens = (effectiveArgs as any)?.tokens;
-            if (isPlainObject(tokens) && Object.keys(tokens).length === 0) {
+            const flatKeys = Object.keys(effectiveArgs ?? {}).filter((k) =>
+              styleTokenKeySet.has(k),
+            );
+            if (flatKeys.length === 0) {
               toolResultRaw = {
                 success: false,
-                error: "tokens patch must not be empty",
+                error: "must include at least one token key/value",
                 error_detail: {
                   name: "InvalidToolArgumentsError",
                   message:
-                    "update_global_styles requires at least one token key/value (e.g. { tokens: { radius: \"0.75rem\" } }).",
+                    "update_global_styles requires at least one token key/value (e.g. { radius: \"0.75rem\" }).",
                 },
                 note: "Resend update_global_styles with at least one token key/value, or skip this tool call.",
               };

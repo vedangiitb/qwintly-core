@@ -2,6 +2,7 @@ import { FunctionCallingConfigMode, Tool } from "@google/genai";
 import { EVENT_TYPES } from "../../types/events.js";
 import { getApplyPatchEventMeta, ToolEvent } from "./toolLoopContext.js";
 import { AiCallFn, Logger } from "./toolLoopRunner.js";
+import { STYLE_TOKEN_KEYS } from "../../types/styleConfig.js";
 
 export const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, Math.max(0, ms)));
@@ -307,10 +308,9 @@ export const recordToolEvent = (params: {
     }
 
     if (name === "update_global_styles") {
-      const tokens = (effectiveArgs as any)?.tokens;
-      const tokenKeys = tokens && typeof tokens === "object" && !Array.isArray(tokens)
-        ? Object.keys(tokens as Record<string, unknown>)
-        : [];
+      const tokenKeySet = new Set<string>(STYLE_TOKEN_KEYS as unknown as string[]);
+      const tokenKeys =
+        Object.keys(effectiveArgs ?? {}).filter((k) => tokenKeySet.has(k));
       const successVal = (toolResult as any)?.success;
       if (typeof successVal === "boolean") {
         const changedVal = (toolResult as any)?.changed;

@@ -4,15 +4,11 @@ import { writeFileAtomic } from "../helpers/pageConfigJson.helpers.js";
 import {
   assertStyleConfig,
   defaultStyleConfigJson,
-  STYLE_TOKEN_KEYS,
   type StyleConfig,
   type StyleTokenKey,
 } from "../../../types/styleConfig.js";
 import { type WorkspaceDeps } from "./workspaceDeps.js";
-
-type UpdateGlobalStylesArgs = {
-  tokens: Partial<Record<StyleTokenKey, string>>;
-};
+import { UpdateGlobalStylesArgsZod } from "../validators/updateGlobalStyles.zod.js";
 
 const STYLE_CONFIG_REL_PATH = path.posix.join("app", "styleConfig.json");
 
@@ -25,30 +21,20 @@ const parseStyleConfigOrDefault = (raw: string): StyleConfig => {
   }
 };
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
 export const createUpdateGlobalStylesImpl = (deps: WorkspaceDeps) => {
   const { workspaceRoot, fs } = deps;
 
-  return async (args: UpdateGlobalStylesArgs) => {
-    const tokensPatch = (args as any)?.tokens;
-    if (!isPlainObject(tokensPatch)) {
-      return { success: false, error: "invalid tokens" };
-    }
-
-    const allowedKeys = new Set<string>(STYLE_TOKEN_KEYS as unknown as string[]);
-    const patchKeys = Object.keys(tokensPatch);
-    if (patchKeys.length === 0) {
-      return { success: false, error: "tokens patch must not be empty" };
-    }
-    const unknownKeys = patchKeys.filter((k) => !allowedKeys.has(k));
-    if (unknownKeys.length > 0) {
+  return async (rawArgs: unknown) => {
+    const parsed = UpdateGlobalStylesArgsZod.safeParse(rawArgs);
+    if (!parsed.success) {
       return {
         success: false,
-        error: `unknown token keys: ${unknownKeys.sort().join(", ")}`,
+        error: "invalid args",
+        error_detail: parsed.error.flatten(),
       };
     }
+
+    const tokensPatch = parsed.data as Partial<Record<StyleTokenKey, string>>;
 
     const configPath = toWorkspacePath(workspaceRoot, STYLE_CONFIG_REL_PATH);
 

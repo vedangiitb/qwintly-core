@@ -11,7 +11,7 @@ test("tool loop: update_global_styles empty tokens is rejected without calling h
     aiCalls += 1;
     if (aiCalls === 1) {
       return {
-        functionCalls: [{ name: "update_global_styles", args: { tokens: {} } }],
+        functionCalls: [{ name: "update_global_styles", args: {} }],
       };
     }
     return { functionCalls: [], text: "ok" };
@@ -49,6 +49,5 @@ test("tool loop: update_global_styles empty tokens is rejected without calling h
   )?.functionResponse?.response;
 
   assert.equal(fr?.success, false);
-  assert.match(String(fr?.error ?? ""), /must not be empty/i);
+  assert.match(String(fr?.error ?? ""), /at least one token/i);
 });
-

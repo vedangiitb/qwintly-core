@@ -84,7 +84,7 @@ test("update_global_styles: merges tokens and bumps version", async () => {
     );
 
     const impl = createUpdateGlobalStylesImpl({ workspaceRoot, fs: makeRealFs() } as any);
-    const res = await impl({ tokens: { background: "oklch(0.88 0.02 80.2)" } });
+    const res = await impl({ background: "oklch(0.88 0.02 80.2)" });
     assert.equal((res as any)?.success, true);
     assert.equal((res as any)?.version, 11);
 
@@ -101,7 +101,7 @@ test("update_global_styles: missing file => creates defaults and applies patch",
   try {
     await fs.mkdir(path.join(workspaceRoot, "app"), { recursive: true });
     const impl = createUpdateGlobalStylesImpl({ workspaceRoot, fs: makeRealFs() } as any);
-    const res = await impl({ tokens: { radius: "0.5rem" } });
+    const res = await impl({ radius: "0.5rem" });
     assert.equal((res as any)?.success, true);
     assert.equal((res as any)?.created, true);
 
@@ -123,7 +123,7 @@ test("update_global_styles: invalid JSON => recreates defaults then applies patc
       "utf-8",
     );
     const impl = createUpdateGlobalStylesImpl({ workspaceRoot, fs: makeRealFs() } as any);
-    const res = await impl({ tokens: { border: "oklch(0.5 0.02 82.5)" } });
+    const res = await impl({ border: "oklch(0.5 0.02 82.5)" });
     assert.equal((res as any)?.success, true);
 
     const stored = await readStyleConfig(workspaceRoot);
@@ -139,7 +139,7 @@ test("update_global_styles: unknown token key is rejected", async () => {
   try {
     await fs.mkdir(path.join(workspaceRoot, "app"), { recursive: true });
     const impl = createUpdateGlobalStylesImpl({ workspaceRoot, fs: makeRealFs() } as any);
-    const res = await impl({ tokens: { notAKey: "oklch(0.1 0 0)" } as any });
+    const res = await impl({ notAKey: "oklch(0.1 0 0)" } as any);
     assert.equal((res as any)?.success, false);
   } finally {
     await fs.rm(workspaceRoot, { recursive: true, force: true });
@@ -151,7 +151,7 @@ test("update_global_styles: unsafe/empty token value is rejected", async () => {
   try {
     await fs.mkdir(path.join(workspaceRoot, "app"), { recursive: true });
     const impl = createUpdateGlobalStylesImpl({ workspaceRoot, fs: makeRealFs() } as any);
-    const res = await impl({ tokens: { background: "" } });
+    const res = await impl({ background: "" });
     assert.equal((res as any)?.success, false);
   } finally {
     await fs.rm(workspaceRoot, { recursive: true, force: true });
@@ -169,7 +169,7 @@ test("update_global_styles: empty tokens patch is rejected", async () => {
     );
 
     const impl = createUpdateGlobalStylesImpl({ workspaceRoot, fs: makeRealFs() } as any);
-    const res = await impl({ tokens: {} as any });
+    const res = await impl({} as any);
     assert.equal((res as any)?.success, false);
 
     const stored = await readStyleConfig(workspaceRoot);

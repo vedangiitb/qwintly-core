@@ -41,6 +41,23 @@ Tool call:
   - Optional \`before_id\` inserts before an existing sibling; omit it to append at the end.
   - Use the returned \`inserted_id\` for follow-up updates.`,
 
+  `### Example: \`update_global_styles\` (change global tokens)
+Goal: Adjust global theme tokens so semantic Tailwind classes (\`bg-background\`, \`text-foreground\`, \`border-border\`, etc.) reflect the desired look.
+
+Tool call:
+\`\`\`json
+{
+  "radius": "0.75rem",
+  "background": "oklch(0.985 0.008 80.2)",
+  "primary": "oklch(0.62 0.16 199.4)"
+}
+\`\`\`
+
+Notes:
+- Args are a flat JSON object with token keys as optional params.
+- Include at least 1 key/value; never call \`update_global_styles\` with \`{}\`.
+- Use safe, non-empty CSS strings (avoid \`<\`, \`>\`, or \`</style\`).`,
+
   `### Example: \`update_classname\` (replace className fully)
 Goal: Update styling on an existing element.
 
