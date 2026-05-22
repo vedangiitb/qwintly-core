@@ -295,15 +295,31 @@ export async function runToolLoop(
 
       const modelArgs = redactFunctionCallArgs(name, effectiveArgs);
 
+      const functionCallPart = {
+        functionCall: {
+          name,
+          args: effectiveArgs,
+        },
+        ...(thoughtSignature
+          ? { thoughtSignature: thoughtSignature, thought_signature: thoughtSignature }
+          : {}),
+      };
+
+      const functionCallPartModel = {
+        functionCall: {
+          name,
+          args: modelArgs,
+        },
+        ...(thoughtSignature
+          ? { thoughtSignature: thoughtSignature, thought_signature: thoughtSignature }
+          : {}),
+      };
+
       const assistantFull = {
         role: "model",
         parts: [
           {
-            functionCall: {
-              name,
-              args: effectiveArgs,
-              ...(thoughtSignature ? { thought_signature: thoughtSignature } : {}),
-            },
+            ...functionCallPart,
           },
         ],
       };
@@ -312,11 +328,7 @@ export async function runToolLoop(
         role: "model",
         parts: [
           {
-            functionCall: {
-              name,
-              args: modelArgs,
-              ...(thoughtSignature ? { thought_signature: thoughtSignature } : {}),
-            },
+            ...functionCallPartModel,
           },
         ],
       };
