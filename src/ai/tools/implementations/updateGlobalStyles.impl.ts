@@ -25,7 +25,16 @@ export const createUpdateGlobalStylesImpl = (deps: WorkspaceDeps) => {
   const { workspaceRoot, fs } = deps;
 
   return async (rawArgs: unknown) => {
-    const parsed = UpdateGlobalStylesArgsZod.safeParse(rawArgs);
+    const normalizedArgs: unknown = (() => {
+      if (typeof rawArgs !== "string") return rawArgs;
+      try {
+        return JSON.parse(rawArgs);
+      } catch {
+        return rawArgs;
+      }
+    })();
+
+    const parsed = UpdateGlobalStylesArgsZod.safeParse(normalizedArgs);
     if (!parsed.success) {
       return {
         success: false,

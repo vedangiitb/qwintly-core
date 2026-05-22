@@ -178,3 +178,18 @@ test("update_global_styles: empty tokens patch is rejected", async () => {
     await fs.rm(workspaceRoot, { recursive: true, force: true });
   }
 });
+
+test("update_global_styles: accepts JSON-string args (primary only)", async () => {
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "qwintly-core-"));
+  try {
+    await fs.mkdir(path.join(workspaceRoot, "app"), { recursive: true });
+    const impl = createUpdateGlobalStylesImpl({ workspaceRoot, fs: makeRealFs() } as any);
+    const res = await impl(JSON.stringify({ primary: "oklch(0.7 0.15 350)" }));
+    assert.equal((res as any)?.success, true);
+
+    const stored = await readStyleConfig(workspaceRoot);
+    assert.equal(stored.tokens.primary, "oklch(0.7 0.15 350)");
+  } finally {
+    await fs.rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
