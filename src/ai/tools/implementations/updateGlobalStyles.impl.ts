@@ -6,6 +6,7 @@ import {
   defaultStyleConfigJson,
   type StyleConfig,
   type StyleTokenKey,
+  STYLE_TOKEN_KEYS,
 } from "../../../types/styleConfig.js";
 import { type WorkspaceDeps } from "./workspaceDeps.js";
 import { UpdateGlobalStylesArgsZod } from "../validators/updateGlobalStyles.zod.js";
@@ -21,6 +22,38 @@ const parseStyleConfigOrDefault = (raw: string): StyleConfig => {
   }
 };
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const extractTokenPatch = (raw: unknown): Partial<Record<StyleTokenKey, string>> => {
+  const allowed = new Set<string>(STYLE_TOKEN_KEYS as unknown as string[]);
+  const out: Record<string, string> = {};
+
+  if (!isPlainObject(raw)) return out as any;
+
+  // Some callers may accidentally wrap args as { args: {...} } or { tokens: {...} }.
+  const maybeArgs = isPlainObject((raw as any).args) ? ((raw as any).args as any) : null;
+  const maybeTokens = isPlainObject((raw as any).tokens) ? ((raw as any).tokens as any) : null;
+
+  const sources: Array<Record<string, unknown>> = [
+    raw as Record<string, unknown>,
+    ...(maybeArgs ? [maybeArgs as Record<string, unknown>] : []),
+    ...(maybeTokens ? [maybeTokens as Record<string, unknown>] : []),
+  ];
+
+  for (const src of sources) {
+    for (const [k, v] of Object.entries(src)) {
+      if (!allowed.has(k)) continue;
+      if (typeof v !== "string") continue;
+      const trimmed = v.trim();
+      if (!trimmed) continue;
+      out[k] = trimmed;
+    }
+  }
+
+  return out as any;
+};
+
 export const createUpdateGlobalStylesImpl = (deps: WorkspaceDeps) => {
   const { workspaceRoot, fs } = deps;
 
@@ -34,16 +67,22 @@ export const createUpdateGlobalStylesImpl = (deps: WorkspaceDeps) => {
       }
     })();
 
+    // First try strict-ish validation, but fall back to extraction so valid tool calls
+    // don't fail due to extra wrapper keys like {tokens:{...}} or {args:{...}}.
     const parsed = UpdateGlobalStylesArgsZod.safeParse(normalizedArgs);
-    if (!parsed.success) {
+    const tokensPatch =
+      parsed.success
+        ? (parsed.data as Partial<Record<StyleTokenKey, string>>)
+        : extractTokenPatch(normalizedArgs);
+
+    if (!tokensPatch || Object.keys(tokensPatch).length === 0) {
       return {
         success: false,
         error: "invalid args",
-        error_detail: parsed.error.flatten(),
+        error_detail: parsed.success ? undefined : parsed.error.flatten(),
+        note: "update_global_styles requires at least one valid token key/value (e.g. { primary: \"oklch(...)\" }).",
       };
     }
-
-    const tokensPatch = parsed.data as Partial<Record<StyleTokenKey, string>>;
 
     const configPath = toWorkspacePath(workspaceRoot, STYLE_CONFIG_REL_PATH);
 

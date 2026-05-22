@@ -193,3 +193,41 @@ test("update_global_styles: accepts JSON-string args (primary only)", async () =
     await fs.rm(workspaceRoot, { recursive: true, force: true });
   }
 });
+
+test("update_global_styles: accepts wrapped args {tokens:{...}} and still applies patch", async () => {
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "qwintly-core-"));
+  try {
+    await fs.mkdir(path.join(workspaceRoot, "app"), { recursive: true });
+    const impl = createUpdateGlobalStylesImpl({ workspaceRoot, fs: makeRealFs() } as any);
+    const res = await impl({ tokens: { primary: "oklch(0.7 0.15 350)" } } as any);
+    assert.equal((res as any)?.success, true);
+
+    const stored = await readStyleConfig(workspaceRoot);
+    assert.equal(stored.tokens.primary, "oklch(0.7 0.15 350)");
+  } finally {
+    await fs.rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("update_global_styles: exact case (primary/ring/chart1/primaryForeground) succeeds", async () => {
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "qwintly-core-"));
+  try {
+    await fs.mkdir(path.join(workspaceRoot, "app"), { recursive: true });
+    const impl = createUpdateGlobalStylesImpl({ workspaceRoot, fs: makeRealFs() } as any);
+    const res = await impl({
+      chart1: "oklch(0.7 0.18 50)",
+      ring: "oklch(0.7 0.18 50)",
+      primaryForeground: "oklch(1 0 0)",
+      primary: "oklch(0.7 0.18 50)",
+    } as any);
+    assert.equal((res as any)?.success, true);
+
+    const stored = await readStyleConfig(workspaceRoot);
+    assert.equal(stored.tokens.primary, "oklch(0.7 0.18 50)");
+    assert.equal(stored.tokens.primaryForeground, "oklch(1 0 0)");
+    assert.equal(stored.tokens.ring, "oklch(0.7 0.18 50)");
+    assert.equal(stored.tokens.chart1, "oklch(0.7 0.18 50)");
+  } finally {
+    await fs.rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
