@@ -231,3 +231,92 @@ test("update_global_styles: exact case (primary/ring/chart1/primaryForeground) s
     await fs.rm(workspaceRoot, { recursive: true, force: true });
   }
 });
+
+test("update_global_styles: user's failing case", async () => {
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "qwintly-core-"));
+  try {
+    await fs.mkdir(path.join(workspaceRoot, "app"), { recursive: true });
+    const impl = createUpdateGlobalStylesImpl({ workspaceRoot, fs: makeRealFs() } as any);
+    const res = await impl({
+      chart2: "oklch(0.75 0.1 45)",
+      chart5: "oklch(0.6 0.2 30)",
+      sidebarRing: "oklch(0.7 0.15 40)",
+      chart1: "oklch(0.7 0.15 40)",
+      primaryForeground: "oklch(1 0 0)",
+      sidebarPrimary: "oklch(0.7 0.15 40)",
+      chart4: "oklch(0.65 0.18 35)",
+      primary: "oklch(0.7 0.15 40)",
+      ring: "oklch(0.7 0.15 40)",
+      accent: "oklch(0.85 0.12 40)",
+      chart3: "oklch(0.8 0.08 50)",
+      sidebarPrimaryForeground: "oklch(1 0 0)"
+    });
+    assert.equal((res as any)?.success, true);
+  } finally {
+    await fs.rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("update_global_styles: mix of valid and invalid/unknown/unsafe params succeeds by ignoring invalid ones", async () => {
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "qwintly-core-"));
+  try {
+    await fs.mkdir(path.join(workspaceRoot, "app"), { recursive: true });
+    const impl = createUpdateGlobalStylesImpl({ workspaceRoot, fs: makeRealFs() } as any);
+    const res = await impl({
+      primary: "oklch(0.7 0.15 40)",
+      notAKey: "should be ignored",
+      background: "", // empty - should be ignored
+      ring: "<script>unsafe</script>", // unsafe - should be ignored
+    } as any);
+    assert.equal((res as any)?.success, true);
+
+    const stored = await readStyleConfig(workspaceRoot);
+    assert.equal(stored.tokens.primary, "oklch(0.7 0.15 40)");
+    // background, ring, notAKey should not be overwritten/updated to invalid values
+    assert.notEqual(stored.tokens.ring, "<script>unsafe</script>");
+    assert.notEqual(stored.tokens.background, "");
+  } finally {
+    await fs.rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("update_global_styles: handles heavily nested/wrapped SDK responses", async () => {
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "qwintly-core-"));
+  try {
+    await fs.mkdir(path.join(workspaceRoot, "app"), { recursive: true });
+    const impl = createUpdateGlobalStylesImpl({ workspaceRoot, fs: makeRealFs() } as any);
+    const res = await impl({
+      sdkHttpResponse: {
+        headers: {
+          "content-type": "application/json"
+        }
+      },
+      candidates: [
+        {
+          content: {
+            parts: [
+              {
+                functionCall: {
+                  name: "update_global_styles",
+                  args: {
+                    chart2: "oklch(0.75 0.1 45)",
+                    primary: "oklch(0.7 0.15 40)"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    } as any);
+    assert.equal((res as any)?.success, true);
+
+    const stored = await readStyleConfig(workspaceRoot);
+    assert.equal(stored.tokens.chart2, "oklch(0.75 0.1 45)");
+    assert.equal(stored.tokens.primary, "oklch(0.7 0.15 40)");
+  } finally {
+    await fs.rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+

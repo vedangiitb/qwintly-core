@@ -9,7 +9,6 @@ import {
   STYLE_TOKEN_KEYS,
 } from "../../../types/styleConfig.js";
 import { type WorkspaceDeps } from "./workspaceDeps.js";
-import { UpdateGlobalStylesArgsZod } from "../validators/updateGlobalStyles.zod.js";
 
 const STYLE_CONFIG_REL_PATH = path.posix.join("app", "styleConfig.json");
 
@@ -22,35 +21,40 @@ const parseStyleConfigOrDefault = (raw: string): StyleConfig => {
   }
 };
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+const isSafeCssValue = (value: string): boolean => {
+  if (!value.trim()) return false;
+  if (value.includes("<") || value.includes(">")) return false;
+  if (value.toLowerCase().includes("</style")) return false;
+  return true;
+};
 
-const extractTokenPatch = (raw: unknown): Partial<Record<StyleTokenKey, string>> => {
+const extractAllValidTokens = (value: unknown): Partial<Record<StyleTokenKey, string>> => {
   const allowed = new Set<string>(STYLE_TOKEN_KEYS as unknown as string[]);
   const out: Record<string, string> = {};
+  const visited = new WeakSet<object>();
 
-  if (!isPlainObject(raw)) return out as any;
+  const traverse = (val: unknown) => {
+    if (typeof val !== "object" || val === null) return;
+    if (visited.has(val)) return;
+    visited.add(val);
 
-  // Some callers may accidentally wrap args as { args: {...} } or { tokens: {...} }.
-  const maybeArgs = isPlainObject((raw as any).args) ? ((raw as any).args as any) : null;
-  const maybeTokens = isPlainObject((raw as any).tokens) ? ((raw as any).tokens as any) : null;
-
-  const sources: Array<Record<string, unknown>> = [
-    raw as Record<string, unknown>,
-    ...(maybeArgs ? [maybeArgs as Record<string, unknown>] : []),
-    ...(maybeTokens ? [maybeTokens as Record<string, unknown>] : []),
-  ];
-
-  for (const src of sources) {
-    for (const [k, v] of Object.entries(src)) {
-      if (!allowed.has(k)) continue;
-      if (typeof v !== "string") continue;
-      const trimmed = v.trim();
-      if (!trimmed) continue;
-      out[k] = trimmed;
+    if (Array.isArray(val)) {
+      for (const item of val) {
+        traverse(item);
+      }
+      return;
     }
-  }
 
+    for (const [k, v] of Object.entries(val)) {
+      if (allowed.has(k) && typeof v === "string" && isSafeCssValue(v)) {
+        out[k] = v.trim();
+      } else {
+        traverse(v);
+      }
+    }
+  };
+
+  traverse(value);
   return out as any;
 };
 
@@ -67,22 +71,20 @@ export const createUpdateGlobalStylesImpl = (deps: WorkspaceDeps) => {
       }
     })();
 
-    // First try strict-ish validation, but fall back to extraction so valid tool calls
-    // don't fail due to extra wrapper keys like {tokens:{...}} or {args:{...}}.
-    const parsed = UpdateGlobalStylesArgsZod.safeParse(normalizedArgs);
-    const tokensPatch =
-      parsed.success
-        ? (parsed.data as Partial<Record<StyleTokenKey, string>>)
-        : extractTokenPatch(normalizedArgs);
+    const tokensPatch = extractAllValidTokens(normalizedArgs);
 
-    if (!tokensPatch || Object.keys(tokensPatch).length === 0) {
+    if (Object.keys(tokensPatch).length === 0) {
       return {
         success: false,
         error: "invalid args",
-        error_detail: parsed.success ? undefined : parsed.error.flatten(),
+        error_detail: {
+          formErrors: ["must include at least one token key/value"],
+          fieldErrors: {},
+        },
         note: "update_global_styles requires at least one valid token key/value (e.g. { primary: \"oklch(...)\" }).",
       };
     }
+
 
     const configPath = toWorkspacePath(workspaceRoot, STYLE_CONFIG_REL_PATH);
 
