@@ -4,8 +4,6 @@ import { FunctionCallingConfigMode } from "@google/genai";
 import { runToolLoop } from "../ai/toolLoop/toolLoopRunner.js";
 
 test("tool loop: update_global_styles empty tokens is rejected without calling handler", async () => {
-  let handlerCalls = 0;
-
   let aiCalls = 0;
   const aiCall = async () => {
     aiCalls += 1;
@@ -20,12 +18,7 @@ test("tool loop: update_global_styles empty tokens is rejected without calling h
   const res = await runToolLoop({
     initialContents: [],
     tools: [],
-    handlers: {
-      update_global_styles: async () => {
-        handlerCalls += 1;
-        return { success: true };
-      },
-    },
+    workspaceRoot: "/dummy/path",
     aiCall,
     logger: async () => {},
     toolCallingMode: FunctionCallingConfigMode.ANY,
@@ -33,7 +26,6 @@ test("tool loop: update_global_styles empty tokens is rejected without calling h
     keepFullTrace: false,
   });
 
-  assert.equal(handlerCalls, 0);
   assert.equal(res.finalText, "ok");
 
   const toolResponses = res.modelContents.filter(

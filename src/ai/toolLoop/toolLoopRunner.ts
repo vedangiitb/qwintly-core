@@ -1,7 +1,11 @@
 import { FunctionCallingConfigMode, Tool } from "@google/genai";
+import fs from "node:fs/promises";
 import { persistToolCall } from "../../services/toolcallPersist.service.js";
 import { EVENT_TYPES, EventType } from "../../types/events.js";
 import { STYLE_TOKEN_KEYS } from "../../types/styleConfig.js";
+import { createWorkspaceToolImpls } from "../tools/implementations/factories.js";
+import { CoreFs } from "../tools/implementations/workspaceDeps.js";
+import { parsePlannerTasksUnknown } from "./plannerTaskParser.js";
 import {
   compactForModel,
   DEFAULT_CONTEXT_POLICY,
@@ -16,8 +20,6 @@ import {
   recordToolEvent,
   serializeError,
 } from "./toolLoopRunnerUtils.js";
-
-export type ToolHandler = (args: Record<string, unknown>) => Promise<unknown>;
 
 export type ToolLoopResult = {
   contents: any[];
@@ -50,7 +52,7 @@ export type AiCallFn = (
 export type RunToolLoopOptions = {
   initialContents: any[];
   tools: Tool[];
-  handlers: Record<string, ToolHandler>;
+  workspaceRoot: string;
   maxSteps?: number;
   toolCallingMode?: FunctionCallingConfigMode;
   terminalToolNames?: string[];
@@ -71,12 +73,14 @@ export async function runToolLoop(
   const isPlainObject = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
 
-  const styleTokenKeySet = new Set<string>(STYLE_TOKEN_KEYS as unknown as string[]);
+  const styleTokenKeySet = new Set<string>(
+    STYLE_TOKEN_KEYS as unknown as string[],
+  );
 
   const {
     initialContents,
     tools,
-    handlers,
+    workspaceRoot,
     maxSteps = 30,
     toolCallingMode = FunctionCallingConfigMode.ANY,
     terminalToolNames = [],
@@ -90,6 +94,67 @@ export async function runToolLoop(
     aiCallAutoRetryMaxMs = 10_000,
     persistResponse,
   } = options;
+
+  const nodeFs: CoreFs = {
+    readFile: async (absolutePath) => fs.readFile(absolutePath, "utf-8"),
+    writeFile: async (absolutePath, content) =>
+      fs.writeFile(absolutePath, content ?? "", "utf-8"),
+    mkdirp: async (absoluteDir) => {
+      await fs.mkdir(absoluteDir, { recursive: true });
+    },
+    rmFile: async (absolutePath) => fs.rm(absolutePath, { force: true }),
+    stat: async (absolutePath) => fs.stat(absolutePath),
+    safeReadDir: async (absoluteDir) =>
+      fs.readdir(absoluteDir, { withFileTypes: true }),
+  };
+
+  const impls = createWorkspaceToolImpls({
+    workspaceRoot,
+    fs: nodeFs,
+  });
+
+  const toolHandlers: Record<string, (args: any) => Promise<any>> = {
+    read_file: (args) =>
+      impls.readFileImpl(
+        String(args.path ?? ""),
+        args.start_line !== undefined ? Number(args.start_line) : undefined,
+        args.end_line !== undefined ? Number(args.end_line) : undefined,
+      ),
+    write_file: (args) =>
+      impls.writeFileImpl(String(args.path ?? ""), String(args.content ?? "")),
+    list_dir: (args) =>
+      impls.listDirImpl(String(args.path ?? ""), Number(args.depth ?? 1)),
+    search: (args) => impls.searchImpl(String(args.query ?? "")),
+    apply_patch: (args) =>
+      impls.applyPatchImpl(String(args.patch_string ?? "")),
+    update_global_styles: (args) => impls.updateGlobalStylesImpl(args),
+    create_new_route: (args) =>
+      impls.createNewRouteImpl(
+        String(args.parent_route ?? ""),
+        String(args.route_name ?? ""),
+      ),
+    delete_element: (args) =>
+      impls.deleteElementImpl(
+        String(args.route ?? ""),
+        String(args.element_id ?? ""),
+      ),
+    insert_element: (args) => impls.insertElementImpl(args),
+    update_props: (args) => impls.updatePropsImpl(args),
+    update_classname: (args) =>
+      impls.updateClassNameImpl(
+        String(args.route ?? ""),
+        String(args.element_id ?? ""),
+        String(args.className ?? ""),
+      ),
+    submit_codegen_done: async (args) => ({
+      success: true,
+      summary: String(args.summary ?? "").trim(),
+    }),
+    submit_planner_tasks: async (args) => {
+      const tasks = parsePlannerTasksUnknown(args.planner_tasks);
+      return { success: true, count: tasks.length };
+    },
+  };
 
   if (typeof aiCall !== "function") {
     throw new Error("Tool loop: aiCall is required.");
@@ -263,7 +328,7 @@ export async function runToolLoop(
         continue;
       }
 
-      const handler = handlers[name];
+      const handler = toolHandlers[name];
       const handlerMissingResult = !handler
         ? {
             success: false,
@@ -330,7 +395,10 @@ export async function runToolLoop(
           args: effectiveArgs,
         },
         ...(thoughtSignature
-          ? { thoughtSignature: thoughtSignature, thought_signature: thoughtSignature }
+          ? {
+              thoughtSignature: thoughtSignature,
+              thought_signature: thoughtSignature,
+            }
           : {}),
       };
 
@@ -340,7 +408,10 @@ export async function runToolLoop(
           args: modelArgs,
         },
         ...(thoughtSignature
-          ? { thoughtSignature: thoughtSignature, thought_signature: thoughtSignature }
+          ? {
+              thoughtSignature: thoughtSignature,
+              thought_signature: thoughtSignature,
+            }
           : {}),
       };
 
@@ -384,7 +455,7 @@ export async function runToolLoop(
                 error_detail: {
                   name: "InvalidToolArgumentsError",
                   message:
-                    "update_global_styles requires at least one token key/value (e.g. { radius: \"0.75rem\" }).",
+                    'update_global_styles requires at least one token key/value (e.g. { radius: "0.75rem" }).',
                 },
                 note: "Resend update_global_styles with at least one token key/value, or skip this tool call.",
               };

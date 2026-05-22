@@ -3,7 +3,6 @@ import { getClient } from "./ai/generate/generateClient.js";
 import {
   runToolLoop,
   RunToolLoopOptions,
-  ToolHandler,
   ToolLoopResult,
 } from "./ai/toolLoop/toolLoopRunner.js";
 import { initUnsplash } from "./image/unsplash.service.js";
@@ -129,20 +128,19 @@ export class QwintlyCore {
   public async runAiFlow(
     initialContents: any[],
     tools: Tool[],
-    handlers: Record<string, ToolHandler>,
     maxSteps: number,
     terminalToolNames: string[],
     persistResponse?: (modelInput: any, modelOutput: any) => Promise<void>,
   ): Promise<ToolLoopResult> {
     if (!this.aiClient) {
-      throw new Error(
+       throw new Error(
         "AI client not initialized. Please provide 'gemini' config to use runAiFlow.",
       );
     }
     const toolLoopOptions: RunToolLoopOptions = {
       initialContents: initialContents,
       tools: tools,
-      handlers: handlers,
+      workspaceRoot: this.workspacePath,
       maxSteps: maxSteps,
       terminalToolNames: terminalToolNames,
       aiCall: (request, options) =>
