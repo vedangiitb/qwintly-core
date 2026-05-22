@@ -114,38 +114,75 @@ export async function runToolLoop(
   });
 
   const toolHandlers: Record<string, (args: any) => Promise<any>> = {
-    read_file: (args) =>
-      impls.readFileImpl(
-        String(args.path ?? ""),
-        args.start_line !== undefined ? Number(args.start_line) : undefined,
-        args.end_line !== undefined ? Number(args.end_line) : undefined,
-      ),
+    read_file: async (args) => {
+      const path = String(args.path ?? "");
+      const startLine =
+        args.start_line === undefined ? undefined : Number(args.start_line);
+      const endLine =
+        args.end_line === undefined ? undefined : Number(args.end_line);
+      const content = await impls.readFileImpl(path, startLine, endLine);
+      return { path, content };
+    },
     write_file: (args) =>
       impls.writeFileImpl(String(args.path ?? ""), String(args.content ?? "")),
-    list_dir: (args) =>
-      impls.listDirImpl(String(args.path ?? ""), Number(args.depth ?? 1)),
-    search: (args) => impls.searchImpl(String(args.query ?? "")),
+    list_dir: async (args) => {
+      const content = await impls.listDirImpl(
+        String(args.path ?? ""),
+        Number(args.depth ?? 1),
+      );
+      return { content };
+    },
+    search: async (args) => {
+      const results = await impls.searchImpl(String(args.search_query ?? ""));
+      return { results };
+    },
     apply_patch: (args) =>
       impls.applyPatchImpl(String(args.patch_string ?? "")),
-    update_global_styles: (args) => impls.updateGlobalStylesImpl(args),
-    create_new_route: (args) =>
-      impls.createNewRouteImpl(
-        String(args.parent_route ?? ""),
-        String(args.route_name ?? ""),
-      ),
-    delete_element: (args) =>
-      impls.deleteElementImpl(
-        String(args.route ?? ""),
-        String(args.element_id ?? ""),
-      ),
-    insert_element: (args) => impls.insertElementImpl(args),
-    update_props: (args) => impls.updatePropsImpl(args),
-    update_classname: (args) =>
-      impls.updateClassNameImpl(
-        String(args.route ?? ""),
-        String(args.element_id ?? ""),
-        String(args.className ?? ""),
-      ),
+    update_global_styles: async (args) => {
+      const result = await impls.updateGlobalStylesImpl(args);
+      return result;
+    },
+    create_new_route: async (args) => {
+      const parentRoute = String(args.parent_route ?? "");
+      const routeName = String(args.route_name ?? "");
+      const result = await impls.createNewRouteImpl(parentRoute, routeName);
+      return result;
+    },
+    delete_element: async (args) => {
+      const route = String(args.route ?? "");
+      const element_id = String(args.element_id ?? "");
+      const result = await impls.deleteElementImpl(route, element_id);
+      return result;
+    },
+    insert_element: async (args) => {
+      const route = String(args.route ?? "");
+      const parent_id = String(args.parent_id ?? "");
+      const element: any = args.element;
+      const result = await impls.insertElementImpl(route, parent_id, element);
+      return result;
+    },
+    update_props: async (args) => {
+      const route = String(args.route ?? "");
+      const element_id = String(args.element_id ?? "");
+      const props: any = args.props;
+      const result = await impls.updatePropsImpl({
+        route,
+        element_id,
+        ...props,
+      });
+      return result;
+    },
+    update_classname: async (args) => {
+      const route = String(args.route ?? "");
+      const element_id = String(args.element_id ?? "");
+      const class_name = String(args.class_name ?? "");
+      const result = await impls.updateClassNameImpl(
+        route,
+        element_id,
+        class_name,
+      );
+      return result;
+    },
     submit_codegen_done: async (args) => ({
       success: true,
       summary: String(args.summary ?? "").trim(),
