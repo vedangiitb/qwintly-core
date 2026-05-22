@@ -11,7 +11,8 @@ export const UpdateGlobalStylesSchema = {
       tokens: {
         type: Type.OBJECT,
         description:
-          `Partial tokens patch (must include at least 1 key). Allowed keys: ${STYLE_TOKEN_KEYS.join(
+          `Args must be exactly: {"tokens": {"<tokenKey>":"<cssString>", ...}}. ` +
+          `Partial tokens patch (must include at least 1 key; never {"tokens":{}}). Allowed keys: ${STYLE_TOKEN_KEYS.join(
             ", ",
           )}. Values must be non-empty safe CSS strings (e.g. '0.75rem' or 'oklch(0.62 0.16 199.4)'). Unknown keys are rejected.`,
         minProperties: "1",

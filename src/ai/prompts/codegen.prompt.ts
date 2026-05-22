@@ -56,7 +56,9 @@ export const codegenPrompt = (params: CodegenNodePromptParams) => {
        - image src auto-generated from alt
        - lucide-react icons only
        - Prefer semantic Tailwind tokens (bg-background, text-foreground, border-border, ring-ring, etc.) over hardcoded colors (e.g. slate-*, bg-white). If you need different global colors/radius, call update_global_styles first, then use token-based classes.
-       - Never call update_global_styles with an empty tokens object. Include at least one token key/value you want to change.
+       - update_global_styles args MUST be exactly: {"tokens": { "<tokenKey>": "<cssString>", ... }}. No other top-level keys.
+       - Never call update_global_styles with an empty patch ({"tokens": {}}). If you don't need to change tokens, do not call this tool.
+       - Example: {"tokens": {"radius":"0.75rem","background":"oklch(0.98 0.01 80)"}}.
      `.trim(),
    );
 

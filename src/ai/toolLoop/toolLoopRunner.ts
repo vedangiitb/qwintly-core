@@ -67,6 +67,9 @@ export type RunToolLoopOptions = {
 export async function runToolLoop(
   options: RunToolLoopOptions,
 ): Promise<ToolLoopResult> {
+  const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+    typeof value === "object" && value !== null && !Array.isArray(value);
+
   const {
     initialContents,
     tools,
@@ -344,7 +347,25 @@ export async function runToolLoop(
         toolResultRaw = handlerMissingResult;
       } else {
         try {
-          toolResultRaw = await handler(effectiveArgs);
+          if (name === "update_global_styles") {
+            const tokens = (effectiveArgs as any)?.tokens;
+            if (isPlainObject(tokens) && Object.keys(tokens).length === 0) {
+              toolResultRaw = {
+                success: false,
+                error: "tokens patch must not be empty",
+                error_detail: {
+                  name: "InvalidToolArgumentsError",
+                  message:
+                    "update_global_styles requires at least one token key/value (e.g. { tokens: { radius: \"0.75rem\" } }).",
+                },
+                note: "Resend update_global_styles with at least one token key/value, or skip this tool call.",
+              };
+            } else {
+              toolResultRaw = await handler(effectiveArgs);
+            }
+          } else {
+            toolResultRaw = await handler(effectiveArgs);
+          }
         } catch (err) {
           logger(`AI tool: ${name} failed`, EVENT_TYPES.STEP_ERROR);
           console.error("Tool loop: handler threw", err, {
