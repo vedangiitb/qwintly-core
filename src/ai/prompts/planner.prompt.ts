@@ -43,6 +43,7 @@ export const plannerPrompt = (params: PlanNodePromptParams) => {
       - read_file: read file
       - search: search codebase
       - list_dir: list dirs
+      - get_available_routes: Get available routes
       - submit_planner_tasks: Finalize planner output
 
       Styling guidance:

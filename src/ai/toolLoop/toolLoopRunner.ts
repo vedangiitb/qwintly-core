@@ -6,6 +6,7 @@ import { STYLE_TOKEN_KEYS } from "../../types/styleConfig.js";
 import { createWorkspaceToolImpls } from "../tools/implementations/factories.js";
 import { CoreFs } from "../tools/implementations/workspaceDeps.js";
 import { parsePlannerTasksUnknown } from "./plannerTaskParser.js";
+import { getAvailableRoutes } from "../tools/helpers/pageConfigJson.helpers.js";
 import {
   compactForModel,
   DEFAULT_CONTEXT_POLICY,
@@ -159,6 +160,14 @@ export async function runToolLoop(
       const parent_id = String(args.parent_id ?? "");
       const element: any = args.element;
       const result = await impls.insertElementImpl(route, parent_id, element);
+      if (!result.success) {
+        const available = await getAvailableRoutes({ workspaceRoot, fs: nodeFs });
+        return {
+          success: false,
+          error: `insert_element failed: ${result.error}. Available routes are: ${JSON.stringify(available)}. If you intend to create a new route, create it using the 'create_new_route' tool.`,
+          available_routes: available,
+        };
+      }
       return result;
     },
     update_props: async (args) => {
@@ -182,6 +191,10 @@ export async function runToolLoop(
         class_name,
       );
       return result;
+    },
+    get_available_routes: async (args) => {
+      const routes = await getAvailableRoutes({ workspaceRoot, fs: nodeFs });
+      return { success: true, routes };
     },
     submit_codegen_done: async (args) => ({
       success: true,

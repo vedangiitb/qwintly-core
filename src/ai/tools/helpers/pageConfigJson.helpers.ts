@@ -200,3 +200,51 @@ export const writeFileAtomic = async (filePath: string, content: string) => {
     throw err;
   }
 };
+
+export const getAvailableRoutes = async (deps: {
+  workspaceRoot: string;
+  fs: {
+    safeReadDir: (absoluteDir: string) => Promise<Array<{
+      name: string;
+      isDirectory: () => boolean;
+      isFile: () => boolean;
+    }>>;
+  };
+}): Promise<string[]> => {
+  const { workspaceRoot, fs } = deps;
+  const appDir = toWorkspacePath(workspaceRoot, "app");
+  const routes: string[] = [];
+
+  const scan = async (dirPath: string) => {
+    let entries;
+    try {
+      entries = await fs.safeReadDir(dirPath);
+    } catch {
+      return;
+    }
+
+    let hasPageConfig = false;
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name === "pageConfig.json") {
+        hasPageConfig = true;
+        break;
+      }
+    }
+
+    if (hasPageConfig) {
+      const rel = path.relative(appDir, dirPath);
+      const routeStr = "/" + rel.replace(/\\/g, "/");
+      routes.push(routeStr === "/" ? "/" : routeStr.replace(/\/$/, ""));
+    }
+
+    for (const entry of entries) {
+      if (entry.isDirectory() && entry.name !== "node_modules" && !entry.name.startsWith(".")) {
+        await scan(path.join(dirPath, entry.name));
+      }
+    }
+  };
+
+  await scan(appDir);
+  return routes.sort();
+};
+

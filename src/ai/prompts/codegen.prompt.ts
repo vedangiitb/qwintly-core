@@ -46,6 +46,7 @@ export const codegenPrompt = (params: CodegenNodePromptParams) => {
       - delete_element: Delete element
       - update_classname: Update className
       - update_props: Update props
+      - get_available_routes: Get available routes
       - submit_codegen_done: Finish task
 
        Rules:
