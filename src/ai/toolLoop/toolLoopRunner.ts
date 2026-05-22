@@ -294,6 +294,29 @@ export async function runToolLoop(
         };
       }
 
+      if (name === "update_global_styles") {
+        // Be forgiving: models sometimes include a legacy "tokens" key or other junk.
+        // We accept the call as long as at least one valid token key/value is provided.
+        const tokensMaybe = (effectiveArgs as any)?.tokens;
+        const normalized: Record<string, unknown> = {};
+
+        if (isPlainObject(tokensMaybe)) {
+          for (const [k, v] of Object.entries(tokensMaybe)) {
+            if (!styleTokenKeySet.has(k)) continue;
+            if (typeof v !== "string") continue;
+            normalized[k] = v;
+          }
+        }
+
+        for (const [k, v] of Object.entries(effectiveArgs ?? {})) {
+          if (!styleTokenKeySet.has(k)) continue;
+          if (typeof v !== "string") continue;
+          normalized[k] = v;
+        }
+
+        effectiveArgs = normalized;
+      }
+
       logger(
         buildToolStatusMessage(name, effectiveArgs, readFileMeta),
         EVENT_TYPES.STEP_STARTED,

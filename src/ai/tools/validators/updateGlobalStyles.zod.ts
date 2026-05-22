@@ -16,7 +16,6 @@ export const UpdateGlobalStylesArgsZod = z
       ]),
     ) as unknown as Record<string, z.ZodTypeAny>,
   )
-  .strict()
   .refine((obj) => Object.keys(obj).length > 0, {
     message: "must include at least one token key/value",
   });
