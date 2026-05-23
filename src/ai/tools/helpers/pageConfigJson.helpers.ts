@@ -3,6 +3,7 @@ import path from "node:path";
 import type { BuilderElement } from "../../../types/elements.js";
 import { createElementId } from "./elementid.helpers.js";
 import { toWorkspacePath } from "./fileSystem.helpers.js";
+import type { CoreFs } from "../implementations/workspaceDeps.js";
 
 export type PageConfigJson = {
   elements: BuilderElement[];
@@ -246,5 +247,82 @@ export const getAvailableRoutes = async (deps: {
 
   await scan(appDir);
   return routes.sort();
+};
+
+export const matchRoute = (physicalRoute: string, requestedRoute: string): boolean => {
+  const physSegs = normalizeRouteSegments(physicalRoute);
+  const reqSegs = normalizeRouteSegments(requestedRoute);
+
+  let pIdx = 0;
+  let rIdx = 0;
+
+  while (pIdx < physSegs.length && rIdx < reqSegs.length) {
+    const phys = physSegs[pIdx];
+    const req = reqSegs[rIdx];
+
+    // Catch-all (e.g. [...slug] or [[...slug]])
+    if (phys.startsWith("[") && phys.endsWith("]") && phys.includes("...")) {
+      return true;
+    }
+
+    // Regular dynamic segment (e.g. [id])
+    if (phys.startsWith("[") && phys.endsWith("]")) {
+      pIdx++;
+      rIdx++;
+      continue;
+    }
+
+    // Exact match
+    if (phys.toLowerCase() === req.toLowerCase()) {
+      pIdx++;
+      rIdx++;
+      continue;
+    }
+
+    return false;
+  }
+
+  // Handle case where we ran out of requested segments but have remaining physical segments
+  // e.g. physical is /blog/[[...slug]] (optional catch-all) and request is /blog
+  if (rIdx === reqSegs.length && pIdx < physSegs.length) {
+    // All remaining physical segments must be optional catch-alls (e.g., [[...slug]])
+    for (let i = pIdx; i < physSegs.length; i++) {
+      const phys = physSegs[i];
+      if (!(phys.startsWith("[[") && phys.endsWith("]]") && phys.includes("..."))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  return pIdx === physSegs.length && rIdx === reqSegs.length;
+};
+
+export const resolvePageConfigJsonPath = async (
+  workspaceRoot: string,
+  route: string,
+  fs: CoreFs,
+): Promise<string> => {
+  // 1. Try exact match first
+  const exactPath = getPageConfigJsonPath(workspaceRoot, route);
+  try {
+    await fs.stat(exactPath);
+    return exactPath;
+  } catch {
+    // Exact file does not exist, let's resolve dynamically
+  }
+
+  // 2. Fetch all available routes in the workspace
+  const available = await getAvailableRoutes({ workspaceRoot, fs });
+
+  // 3. Find first matching route
+  for (const physRoute of available) {
+    if (matchRoute(physRoute, route)) {
+      return getPageConfigJsonPath(workspaceRoot, physRoute);
+    }
+  }
+
+  // 4. Fallback: if no match, just return the exact path
+  return exactPath;
 };
 

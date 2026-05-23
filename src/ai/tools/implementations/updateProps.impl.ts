@@ -4,7 +4,7 @@ import {
   ensureElementIds,
   extractAllIdsDeep,
   findElementById,
-  getPageConfigJsonPath,
+  resolvePageConfigJsonPath,
   parsePageConfigJson,
   stringifyPageConfigJson,
   writeFileAtomic,
@@ -64,7 +64,7 @@ export const createUpdatePropsImpl = (deps: WorkspaceDeps) => {
 
     let configPath: string;
     try {
-      configPath = getPageConfigJsonPath(workspaceRoot, args.route);
+      configPath = await resolvePageConfigJsonPath(workspaceRoot, args.route, fs);
     } catch (err) {
       return {
         success: false,

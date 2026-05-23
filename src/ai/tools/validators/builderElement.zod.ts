@@ -26,8 +26,8 @@ const isInternalRoutePath = (value: string) => {
   const s = normalizeInternalRoutePath(value);
   if (!s) return false;
   if (s.includes("\\")) return false;
-  // Allow "/" or "/a" or "/a/b-c_d"
-  return /^\/(?:[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*)?$/.test(s);
+  // Allow "/" or "/a" or "/a/b-c_d" or "/product/[id]" or "/blog/[...slug]" or "/blog/[[...slug]]"
+  return /^\/(?:[A-Za-z0-9_.[\]-]+(?:\/[A-Za-z0-9_.[\]-]+)*)?$/.test(s);
 };
 
 export const OnClickActionZod = z.discriminatedUnion("kind", [

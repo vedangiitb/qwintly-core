@@ -6,6 +6,8 @@ import fs from "node:fs/promises";
 import { createInsertElementImpl } from "../ai/tools/implementations/insertElement.impl.js";
 import { createUpdatePropsImpl } from "../ai/tools/implementations/updateProps.impl.js";
 import { createUpdateClassNameImpl } from "../ai/tools/implementations/updateClassName.impl.js";
+import { createDeleteElementImpl } from "../ai/tools/implementations/deleteElement.impl.js";
+import { matchRoute } from "../ai/tools/helpers/pageConfigJson.helpers.js";
 
 type Deps = Parameters<typeof createInsertElementImpl>[0];
 type CoreFs = Deps["fs"];
@@ -102,6 +104,127 @@ test("insert/update tools: inject ids, insert under parent, update props and cla
     assert.equal(found.props.text, "updated");
     assert.equal(found.props.href, "/x");
     assert.equal(found.className, "text-red-500");
+  } finally {
+    await fs.rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("matchRoute helper correctly matches physical paths", () => {
+  // exact match
+  assert.equal(matchRoute("/", "/"), true);
+  assert.equal(matchRoute("/dashboard", "/dashboard"), true);
+  assert.equal(matchRoute("/dashboard", "/dashboard/"), true);
+  assert.equal(matchRoute("/dashboard/", "/dashboard"), true);
+  
+  // dynamic segment
+  assert.equal(matchRoute("/product/[id]", "/product/123"), true);
+  assert.equal(matchRoute("/product/[id]", "/product/hi"), true);
+  assert.equal(matchRoute("/product/[id]", "/product/"), false);
+  assert.equal(matchRoute("/product/[id]", "/product/123/reviews"), false);
+  assert.equal(matchRoute("/product/[id]/reviews", "/product/abc/reviews"), true);
+
+  // catch-all segment
+  assert.equal(matchRoute("/blog/[...slug]", "/blog/react"), true);
+  assert.equal(matchRoute("/blog/[...slug]", "/blog/react/hooks/state"), true);
+  assert.equal(matchRoute("/blog/[...slug]", "/blog"), false); // required catch-all requires at least one segment
+
+  // optional catch-all segment
+  assert.equal(matchRoute("/blog/[[...slug]]", "/blog"), true);
+  assert.equal(matchRoute("/blog/[[...slug]]", "/blog/react"), true);
+  assert.equal(matchRoute("/blog/[[...slug]]", "/blog/react/hooks"), true);
+});
+
+test("dynamic/nested routes resolution in tools", async () => {
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "qwintly-core-dynamic-"));
+  try {
+    // 1. Create a dynamic route /product/[id]
+    const routeDir = path.join(workspaceRoot, "app", "product", "[id]");
+    await fs.mkdir(routeDir, { recursive: true });
+    const filePath = path.join(routeDir, "pageConfig.json");
+    await fs.writeFile(
+      filePath,
+      JSON.stringify(
+        {
+          elements: [
+            {
+              id: "root",
+              type: "div",
+              children: [{ id: "prod_title", type: "text", props: { text: "Product Name" } }],
+            },
+          ],
+        },
+        null,
+        2,
+      ) + "\n",
+      "utf-8",
+    );
+
+    // 2. Create a catch-all route /blog/[...slug]
+    const blogDir = path.join(workspaceRoot, "app", "blog", "[...slug]");
+    await fs.mkdir(blogDir, { recursive: true });
+    const blogFilePath = path.join(blogDir, "pageConfig.json");
+    await fs.writeFile(
+      blogFilePath,
+      JSON.stringify(
+        {
+          elements: [
+            {
+              id: "blog_root",
+              type: "div",
+              children: [{ id: "blog_content", type: "text", props: { text: "Blog Post" } }],
+            },
+          ],
+        },
+        null,
+        2,
+      ) + "\n",
+      "utf-8",
+    );
+
+    const deps = { workspaceRoot, fs: makeRealFs() } as any;
+    const insert = createInsertElementImpl(deps);
+    const updateProps = createUpdatePropsImpl(deps);
+    const updateClassName = createUpdateClassNameImpl(deps);
+    const deleteElement = createDeleteElementImpl(deps);
+
+    // Test insert_element on dynamic route '/product/123'
+    const insRes = await insert("/product/123", "root", {
+      type: "button",
+      props: { text: "Buy Now" },
+    } as any);
+    assert.equal(insRes.success, true);
+
+    // Verify it updated '/app/product/[id]/pageConfig.json'
+    const afterProduct = JSON.parse(await fs.readFile(filePath, "utf-8"));
+    assert.equal(afterProduct.elements[0].children.length, 2);
+    const newBtn = afterProduct.elements[0].children[1];
+    assert.equal(newBtn.type, "button");
+    assert.equal(newBtn.props.text, "Buy Now");
+
+    // Test update_props on dynamic route '/product/hi-there'
+    const upRes = await updateProps({
+      route: "/product/hi-there",
+      element_id: "prod_title",
+      text: "Updated Product Title",
+    } as any);
+    assert.equal(upRes.success, true);
+
+    // Test update_classname on catch-all route '/blog/react/hooks/state'
+    const classRes = await updateClassName("/blog/react/hooks/state", "blog_content", "text-blue-500");
+    assert.equal(classRes.success, true);
+
+    // Verify blog config updated
+    const afterBlog = JSON.parse(await fs.readFile(blogFilePath, "utf-8"));
+    const updatedTitle = afterBlog.elements[0].children[0];
+    assert.equal(updatedTitle.className, "text-blue-500");
+
+    // Test delete_element on catch-all route
+    const delRes = await deleteElement("/blog/react/something-else", "blog_content");
+    assert.equal(delRes.success, true);
+
+    const afterDelBlog = JSON.parse(await fs.readFile(blogFilePath, "utf-8"));
+    assert.equal(afterDelBlog.elements[0].children.length, 0);
+
   } finally {
     await fs.rm(workspaceRoot, { recursive: true, force: true });
   }

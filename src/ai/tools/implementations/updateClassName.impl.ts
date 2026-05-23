@@ -2,7 +2,7 @@ import {
   ensureElementIds,
   extractAllIdsDeep,
   findElementById,
-  getPageConfigJsonPath,
+  resolvePageConfigJsonPath,
   parsePageConfigJson,
   stringifyPageConfigJson,
   writeFileAtomic,
@@ -18,7 +18,7 @@ export const createUpdateClassNameImpl = (deps: WorkspaceDeps) => {
 
     let configPath: string;
     try {
-      configPath = getPageConfigJsonPath(workspaceRoot, route);
+      configPath = await resolvePageConfigJsonPath(workspaceRoot, route, fs);
     } catch (err) {
       return {
         success: false,

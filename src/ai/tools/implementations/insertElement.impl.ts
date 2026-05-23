@@ -4,7 +4,7 @@ import {
   ensureElementIds,
   extractAllIdsDeep,
   findElementById,
-  getPageConfigJsonPath,
+  resolvePageConfigJsonPath,
   parsePageConfigJson,
   stringifyPageConfigJson,
   writeFileAtomic,
@@ -47,7 +47,7 @@ export const createInsertElementImpl = (deps: WorkspaceDeps) => {
 
     let configPath: string;
     try {
-      configPath = getPageConfigJsonPath(workspaceRoot, parsedArgs.data.route);
+      configPath = await resolvePageConfigJsonPath(workspaceRoot, parsedArgs.data.route, fs);
     } catch (err) {
       return {
         success: false,
