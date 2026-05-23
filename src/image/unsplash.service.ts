@@ -22,7 +22,10 @@ let unsplashConfig: UnsplashConfig | null = null;
 
 const cache = new Map<string, ResolvedImage>();
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), 5000);
   try {
@@ -164,13 +167,17 @@ export const resolveUnsplashImageForElement = async (
   }
   try {
     const resolved = await searchUnsplashImage(query);
-    if (!resolved?.imageUrl) return;
+    if (!resolved?.imageUrl) {
+      console.log(resolved);
+      return;
+    }
 
     const anyEl = el as any;
     if (!anyEl.props || typeof anyEl.props !== "object") anyEl.props = {};
     anyEl.props.src = resolved.imageUrl;
     anyEl.props.alt = query;
-  } catch {
+  } catch (error) {
+    console.error(error);
     // Ignore Unsplash lookup errors and still allow prop updates.
   }
 };
