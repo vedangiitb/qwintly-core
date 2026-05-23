@@ -57,10 +57,9 @@ test("insert/update tools: inject ids, insert under parent, update props and cla
     const updateProps = createUpdatePropsImpl(deps);
     const updateClassName = createUpdateClassNameImpl(deps);
 
-    const inserted = await insert("/a", "root", {
-      type: "text",
-      props: { text: "hello" },
-    } as any);
+    const inserted = await insert("/a", "root", [
+      { id: "new_el", parentId: "parent", type: "text", props: { text: "hello" } }
+    ] as any);
     assert.equal(
       (inserted as any).success,
       true,
@@ -73,7 +72,9 @@ test("insert/update tools: inject ids, insert under parent, update props and cla
       route: "/a",
       parent_id: "root",
       before_id: "existing",
-      element: { type: "text", props: { text: "first" } },
+      elements: [
+        { id: "first_el", parentId: "parent", type: "text", props: { text: "first" } }
+      ],
     } as any);
     assert.equal(
       (inserted2 as any).success,
@@ -187,11 +188,9 @@ test("dynamic/nested routes resolution in tools", async () => {
     const updateClassName = createUpdateClassNameImpl(deps);
     const deleteElement = createDeleteElementImpl(deps);
 
-    // Test insert_element on dynamic route '/product/123'
-    const insRes = await insert("/product/123", "root", {
-      type: "button",
-      props: { text: "Buy Now" },
-    } as any);
+    const insRes = await insert("/product/123", "root", [
+      { id: "buy_btn", parentId: "parent", type: "button", props: { text: "Buy Now" } }
+    ] as any);
     assert.equal(insRes.success, true);
 
     // Verify it updated '/app/product/[id]/pageConfig.json'

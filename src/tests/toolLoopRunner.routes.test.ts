@@ -25,7 +25,9 @@ test("tool loop: insert_element failure includes available routes and hint", asy
               args: {
                 route: "/invalid-route",
                 parent_id: "root",
-                element: { type: "text", props: { text: "hi" } },
+                elements: [
+                  { id: "text_el", parentId: "parent", type: "text", props: { text: "hi" } }
+                ],
               },
             },
           ],

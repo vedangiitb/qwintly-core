@@ -57,7 +57,7 @@ export const createInsertElementImpl = (deps: WorkspaceDeps) => {
   return async (
     routeOrArgs: string | Record<string, unknown>,
     parentId?: string,
-    element?: BuilderElement | any[],
+    inputElements?: any[],
     beforeId?: string,
   ) => {
     const rawArgs =
@@ -67,8 +67,7 @@ export const createInsertElementImpl = (deps: WorkspaceDeps) => {
             route: routeOrArgs,
             parent_id: parentId,
             before_id: beforeId,
-            element: !Array.isArray(element) ? element : undefined,
-            elements: Array.isArray(element) ? element : undefined,
+            elements: inputElements,
           };
 
     const parsedArgs = InsertElementArgsZod.safeParse(rawArgs);
@@ -123,23 +122,12 @@ export const createInsertElementImpl = (deps: WorkspaceDeps) => {
 
     // Clone + inject ids for the inserted element subtree.
     let toInsert: BuilderElement[];
-    if (parsedArgs.data.elements) {
-      try {
-        toInsert = reconstructTree(parsedArgs.data.elements);
-      } catch (err) {
-        return {
-          success: false,
-          error: err instanceof Error ? err.message : String(err),
-        };
-      }
-    } else if (parsedArgs.data.element) {
-      toInsert = [
-        JSON.parse(JSON.stringify(parsedArgs.data.element ?? null)) as BuilderElement,
-      ];
-    } else {
+    try {
+      toInsert = reconstructTree(parsedArgs.data.elements);
+    } catch (err) {
       return {
         success: false,
-        error: "invalid elements format: neither element nor elements provided",
+        error: err instanceof Error ? err.message : String(err),
       };
     }
 

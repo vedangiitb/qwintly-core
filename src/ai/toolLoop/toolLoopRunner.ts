@@ -156,10 +156,7 @@ export async function runToolLoop(
       return result;
     },
     insert_element: async (args) => {
-      const route = String(args.route ?? "");
-      const parent_id = String(args.parent_id ?? "");
-      const element: any = args.element;
-      const result = await impls.insertElementImpl(route, parent_id, element);
+      const result = await impls.insertElementImpl(args);
       if (!result.success) {
         const available = await getAvailableRoutes({ workspaceRoot, fs: nodeFs });
         return {
