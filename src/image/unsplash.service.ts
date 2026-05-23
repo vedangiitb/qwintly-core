@@ -182,7 +182,7 @@ export const resolveUnsplashImagesDeep = async (
 
   if (anyEl?.type === "image") {
     const alt = String(anyEl?.props?.alt ?? "").trim();
-    resolveUnsplashImageForElement(el, alt);
+    await resolveUnsplashImageForElement(el, alt);
   }
 
   const kids = anyEl?.children;
