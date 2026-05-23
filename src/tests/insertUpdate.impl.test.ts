@@ -229,3 +229,154 @@ test("dynamic/nested routes resolution in tools", async () => {
     await fs.rm(workspaceRoot, { recursive: true, force: true });
   }
 });
+
+test("insert tool: supports flat elements list with parent-child mapping", async () => {
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "qwintly-core-flat-"));
+  try {
+    const routeDir = path.join(workspaceRoot, "app", "flat-test");
+    await fs.mkdir(routeDir, { recursive: true });
+    const filePath = path.join(routeDir, "pageConfig.json");
+    await fs.writeFile(
+      filePath,
+      JSON.stringify(
+        {
+          elements: [
+            {
+              id: "root",
+              type: "div",
+              children: [],
+            },
+          ],
+        },
+        null,
+        2,
+      ) + "\n",
+      "utf-8",
+    );
+
+    const deps = { workspaceRoot, fs: makeRealFs() } as any;
+    const insert = createInsertElementImpl(deps);
+
+    // Call insert using the flat elements format
+    const inserted = await insert({
+      route: "/flat-test",
+      parent_id: "root",
+      elements: [
+        {
+          id: "container",
+          parentId: "parent",
+          type: "div",
+          className: "bg-red-500",
+        },
+        {
+          id: "heading",
+          parentId: "container",
+          type: "text",
+          props: { text: "Hello from Flat List" },
+        },
+      ],
+    } as any);
+
+    assert.equal(
+      (inserted as any).success,
+      true,
+      `unexpected response: ${JSON.stringify(inserted)}`,
+    );
+
+    const after = JSON.parse(await fs.readFile(filePath, "utf-8"));
+    const children = after.elements[0].children as any[];
+    assert.equal(children.length, 1);
+    
+    const insertedContainer = children[0];
+    assert.equal(insertedContainer.className, "bg-red-500");
+    assert.equal(insertedContainer.type, "div");
+    
+    // Verify children inside the container
+    assert.equal(insertedContainer.children.length, 1);
+    const insertedHeading = insertedContainer.children[0];
+    assert.equal(insertedHeading.type, "text");
+    assert.equal(insertedHeading.props.text, "Hello from Flat List");
+    
+    // Verify that proper real IDs starting with el_ were generated
+    assert.ok(insertedContainer.id.startsWith("el_"));
+    assert.ok(insertedHeading.id.startsWith("el_"));
+  } finally {
+    await fs.rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("insert tool: supports multiple sibling root elements in flat array", async () => {
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "qwintly-core-multi-flat-"));
+  try {
+    const routeDir = path.join(workspaceRoot, "app", "multi-flat-test");
+    await fs.mkdir(routeDir, { recursive: true });
+    const filePath = path.join(routeDir, "pageConfig.json");
+    await fs.writeFile(
+      filePath,
+      JSON.stringify(
+        {
+          elements: [
+            {
+              id: "root",
+              type: "div",
+              children: [],
+            },
+          ],
+        },
+        null,
+        2,
+      ) + "\n",
+      "utf-8",
+    );
+
+    const deps = { workspaceRoot, fs: makeRealFs() } as any;
+    const insert = createInsertElementImpl(deps);
+
+    // Call insert with two sibling root elements
+    const inserted = await insert({
+      route: "/multi-flat-test",
+      parent_id: "root",
+      elements: [
+        {
+          id: "card_1",
+          parentId: "parent",
+          type: "div",
+          className: "card-1",
+        },
+        {
+          id: "card_2",
+          parentId: "parent",
+          type: "div",
+          className: "card-2",
+        },
+        {
+          id: "heading_1",
+          parentId: "card_1",
+          type: "text",
+          props: { text: "Heading 1" },
+        },
+      ],
+    } as any);
+
+    assert.equal(
+      (inserted as any).success,
+      true,
+      `unexpected response: ${JSON.stringify(inserted)}`,
+    );
+
+    assert.ok(Array.isArray((inserted as any).inserted_ids));
+    assert.equal((inserted as any).inserted_ids.length, 2);
+
+    const after = JSON.parse(await fs.readFile(filePath, "utf-8"));
+    const children = after.elements[0].children as any[];
+    assert.equal(children.length, 2);
+
+    assert.equal(children[0].className, "card-1");
+    assert.equal(children[1].className, "card-2");
+
+    assert.equal(children[0].children.length, 1);
+    assert.equal(children[0].children[0].props.text, "Heading 1");
+  } finally {
+    await fs.rm(workspaceRoot, { recursive: true, force: true });
+  }
+});

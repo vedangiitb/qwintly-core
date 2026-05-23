@@ -42,7 +42,7 @@ export const codegenPrompt = (params: CodegenNodePromptParams) => {
       - update_global_styles: Update app/styleConfig.json global design tokens
       - list_dir: List directory
       - create_new_route: Create route with page.tsx + pageConfig.json
-      - insert_element: Insert element tree
+      - insert_element: Insert element tree (using flat array of elements)
       - delete_element: Delete element
       - update_classname: Update className
       - update_props: Update props
@@ -50,7 +50,7 @@ export const codegenPrompt = (params: CodegenNodePromptParams) => {
       - submit_codegen_done: Finish task
 
        Rules:
-       - One insert_element per tree (include children inline) unless depth blocks it.
+       - Use \`insert_element\` to insert an entire UI tree at once. Pass a flat array of elements under \`elements\`. The root element of your new subtree must have \`parentId\` set to \`\"parent\"\`. All other elements in the array must set \`parentId\` matching the temporary \`id\` of their parent in that same array.
        - Create missing routes with create_new_route.
        - For any tool arg named route, always use URL paths with forward slashes (e.g. '/', '/pricing'); never use '\\' or filesystem paths like 'app/pricing'.
        - insert_element supports optional before_id to insert before an existing sibling; if omitted or not found, it appends to the end.

@@ -10,34 +10,52 @@ Tool call:
   "route": "/",
   "parent_id": "root",
   "before_id": "el_existing_sibling_id",
-  "element": {
-    "type": "div",
-    "className": "mt-10 flex items-center justify-between gap-6 rounded-2xl border border-border bg-background p-6 text-foreground",
-    "children": [
-      {
-        "type": "div",
-        "className": "flex flex-col gap-1",
-        "children": [
-          { "type": "text", "className": "text-lg font-semibold", "props": { "text": "Ready to get started?" } },
-          { "type": "text", "className": "text-sm text-muted-foreground", "props": { "text": "Create your first project in under a minute." } }
-        ]
-      },
-      {
-        "type": "button",
-        "className": "inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90",
-        "props": {
-          "text": "Get Started",
-          "onClick": { "kind": "route", "href": "/signup" }
-        }
+  "elements": [
+    {
+      "id": "cta_section",
+      "parentId": "parent",
+      "type": "div",
+      "className": "mt-10 flex items-center justify-between gap-6 rounded-2xl border border-border bg-background p-6 text-foreground"
+    },
+    {
+      "id": "text_container",
+      "parentId": "cta_section",
+      "type": "div",
+      "className": "flex flex-col gap-1"
+    },
+    {
+      "id": "cta_heading",
+      "parentId": "text_container",
+      "type": "text",
+      "className": "text-lg font-semibold",
+      "props": { "text": "Ready to get started?" }
+    },
+    {
+      "id": "cta_subheading",
+      "parentId": "text_container",
+      "type": "text",
+      "className": "text-sm text-muted-foreground",
+      "props": { "text": "Create your first project in under a minute." }
+    },
+    {
+      "id": "cta_btn",
+      "parentId": "cta_section",
+      "type": "button",
+      "className": "inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90",
+      "props": {
+        "text": "Get Started",
+        "onClick": { "kind": "route", "href": "/signup" }
       }
-    ]
-  }
+    }
+  ]
 }
 \`\`\`
 
   Notes:
   - Always pass a complete \`className\` string (Tailwind only).
-  - Use \`children\` to nest elements; children can themselves have \`children\` (deep nesting is supported).
+  - Use \`elements\` flat list to represent UI structures of arbitrary depth.
+  - Link child elements to their parent in the array by setting \`parentId\` to the parent element's temporary \`id\`.
+  - The root element in the \`elements\` array must have \`parentId\` set to \`"parent"\`.
   - Optional \`before_id\` inserts before an existing sibling; omit it to append at the end.
   - Use the returned \`inserted_id\` for follow-up updates.`,
 

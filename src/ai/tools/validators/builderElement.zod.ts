@@ -54,43 +54,62 @@ export const OnClickActionZod = z.discriminatedUnion("kind", [
   }),
 ]);
 
+const BuilderElementPropsZod = z
+  .object({
+    onClick: OnClickActionZod.optional(),
+    text: z.string().optional(),
+    href: z.string().optional(),
+    placeholder: z.string().optional(),
+    alt: z.string().optional(),
+    target: z.string().optional(),
+    rel: z.string().optional(),
+    value: z.string().optional(),
+    type: z.string().optional(),
+    name: z.string().optional(),
+    size: z.number().optional(),
+    color: z.string().optional(),
+    strokeWidth: z.number().optional(),
+  })
+  .passthrough();
+
 export const BuilderElementZod: z.ZodType<any> = z.object({
   type: z.enum(ELEMENT_TYPES),
   className: z.string().optional(),
   visible: z.boolean().optional(),
-  props: z
-    .object({
-      onClick: OnClickActionZod.optional(),
-      text: z.string().optional(),
-      href: z.string().optional(),
-      placeholder: z.string().optional(),
-      alt: z.string().optional(),
-      target: z.string().optional(),
-      rel: z.string().optional(),
-      value: z.string().optional(),
-      type: z.string().optional(),
-      name: z.string().optional(),
-      size: z.number().optional(),
-      color: z.string().optional(),
-      strokeWidth: z.number().optional(),
-    })
-    .passthrough()
-    .optional(),
+  props: BuilderElementPropsZod.optional(),
   children: z.array(z.lazy(() => BuilderElementZod)).optional(),
 });
 
-export const InsertElementArgsZod = z.object({
-  route: z.preprocess(
-    normalizeInternalRoutePath,
-    z
-      .string()
-      .min(1)
-      .refine(isInternalRoutePath, {
-        message:
-          "route must be like '/' or '/about' (forward slashes only; no backslashes)",
-      }),
-  ),
-  parent_id: z.string().min(1),
-  before_id: z.string().min(1).optional(),
-  element: BuilderElementZod,
+export const FlatBuilderElementZod = z.object({
+  id: z.string().min(1),
+  parentId: z.string().min(1),
+  type: z.enum(ELEMENT_TYPES),
+  className: z.string().optional(),
+  visible: z.boolean().optional(),
+  props: BuilderElementPropsZod.optional(),
 });
+
+export const InsertElementArgsZod = z
+  .object({
+    route: z.preprocess(
+      normalizeInternalRoutePath,
+      z
+        .string()
+        .min(1)
+        .refine(isInternalRoutePath, {
+          message:
+            "route must be like '/' or '/about' (forward slashes only; no backslashes)",
+        }),
+    ),
+    parent_id: z.string().min(1),
+    before_id: z.string().min(1).optional(),
+    element: BuilderElementZod.optional(),
+    elements: z.array(FlatBuilderElementZod).min(1).optional(),
+  })
+  .refine(
+    (data) => data.element !== undefined || data.elements !== undefined,
+    {
+      message: "Either 'element' or 'elements' must be provided",
+      path: ["element"],
+    },
+  );
