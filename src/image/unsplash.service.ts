@@ -89,7 +89,7 @@ export async function searchUnsplashImage(
   }
 
   const params = new URLSearchParams({
-    imgQuery,
+    query: imgQuery,
     per_page: "10",
   });
 

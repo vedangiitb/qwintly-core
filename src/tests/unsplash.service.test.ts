@@ -12,6 +12,8 @@ test("resolveUnsplashImagesDeep: resolves and inserts src for images", async () 
     calls.push(urlString);
     
     if (urlString.includes("/search/photos")) {
+      const urlObj = new URL(urlString);
+      assert.equal(urlObj.searchParams.get("query"), "rustic sourdough bread");
       return {
         ok: true,
         status: 200,
