@@ -11,7 +11,7 @@ export class GenTokensRepository extends DBRepository {
       p_gen_id: sessionId,
       p_input_tokens: input_tokens,
       p_output_tokens: output_tokens,
-      model: model,
+      p_model: model,
     });
 
     if (error) {
