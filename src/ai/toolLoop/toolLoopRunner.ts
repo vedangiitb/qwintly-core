@@ -1,12 +1,13 @@
 import { FunctionCallingConfigMode, Tool } from "@google/genai";
 import fs from "node:fs/promises";
+import type { GenTokensRepository } from "../../repository/genTokens.repository.js";
 import { persistToolCall } from "../../services/toolcallPersist.service.js";
 import { EVENT_TYPES, EventType } from "../../types/events.js";
 import { STYLE_TOKEN_KEYS } from "../../types/styleConfig.js";
+import { getAvailableRoutes } from "../tools/helpers/pageConfigJson.helpers.js";
 import { createWorkspaceToolImpls } from "../tools/implementations/factories.js";
 import { CoreFs } from "../tools/implementations/workspaceDeps.js";
 import { parsePlannerTasksUnknown } from "./plannerTaskParser.js";
-import { getAvailableRoutes } from "../tools/helpers/pageConfigJson.helpers.js";
 import {
   compactForModel,
   DEFAULT_CONTEXT_POLICY,
@@ -66,6 +67,11 @@ export type RunToolLoopOptions = {
   aiCallAutoRetryBaseMs?: number;
   aiCallAutoRetryMaxMs?: number;
   persistResponse?: (modelInput: any, modelOutput: any) => Promise<void>;
+  tokenPersistence?: {
+    repository: Pick<GenTokensRepository, "persistGenTokens">;
+    sessionId: string;
+    model: string;
+  };
 };
 
 export async function runToolLoop(
@@ -94,7 +100,42 @@ export async function runToolLoop(
     aiCallAutoRetryBaseMs = 400,
     aiCallAutoRetryMaxMs = 10_000,
     persistResponse,
+    tokenPersistence,
   } = options;
+
+  const extractUsageTokenCounts = (rawResponse: unknown) => {
+    const usage = (rawResponse as any)?.usageMetadata;
+    const promptTokenCount = usage?.promptTokenCount;
+    const candidatesTokenCount = usage?.candidatesTokenCount;
+
+    const inputTokens = Number(promptTokenCount);
+    const outputTokens = Number(candidatesTokenCount);
+
+    if (!Number.isFinite(inputTokens) || inputTokens < 0) return null;
+    if (!Number.isFinite(outputTokens) || outputTokens < 0) return null;
+
+    return { inputTokens, outputTokens };
+  };
+
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let sawAnyTokenUsage = false;
+
+  const persistTokensOnce = async () => {
+    if (!tokenPersistence) return;
+    if (!sawAnyTokenUsage) return;
+
+    try {
+      await tokenPersistence.repository.persistGenTokens(
+        tokenPersistence.sessionId,
+        totalInputTokens,
+        totalOutputTokens,
+        tokenPersistence.model,
+      );
+    } catch (err) {
+      console.error("Tool loop: failed to persist gen tokens", err);
+    }
+  };
 
   const nodeFs: CoreFs = {
     readFile: async (absolutePath) => fs.readFile(absolutePath, "utf-8"),
@@ -158,7 +199,10 @@ export async function runToolLoop(
     insert_element: async (args) => {
       const result = await impls.insertElementImpl(args);
       if (!result.success) {
-        const available = await getAvailableRoutes({ workspaceRoot, fs: nodeFs });
+        const available = await getAvailableRoutes({
+          workspaceRoot,
+          fs: nodeFs,
+        });
         return {
           success: false,
           error: `insert_element failed: ${result.error}. Available routes are: ${JSON.stringify(available)}. If you intend to create a new route, create it using the 'create_new_route' tool.`,
@@ -307,8 +351,18 @@ export async function runToolLoop(
       }
     }
 
+    {
+      const usage = extractUsageTokenCounts(response);
+      if (usage) {
+        sawAnyTokenUsage = true;
+        totalInputTokens += usage.inputTokens;
+        totalOutputTokens += usage.outputTokens;
+      }
+    }
+
     const functionCalls = response.functionCalls ?? [];
     if (functionCalls.length === 0) {
+      await persistTokensOnce();
       return {
         contents: keepFullTrace ? fullTraceContents : modelContents,
         modelContents,
@@ -642,6 +696,7 @@ export async function runToolLoop(
       });
 
       if (terminalToolNames.includes(name)) {
+        await persistTokensOnce();
         return {
           contents: keepFullTrace ? fullTraceContents : modelContents,
           modelContents,
@@ -653,6 +708,7 @@ export async function runToolLoop(
     }
   }
 
+  await persistTokensOnce();
   return {
     contents: keepFullTrace ? fullTraceContents : modelContents,
     modelContents,
