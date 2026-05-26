@@ -53,7 +53,7 @@ export const codegenPrompt = (params: CodegenNodePromptParams) => {
        - Use \`insert_element\` to insert an entire UI tree at once. Pass a flat array of elements under \`elements\`. The root element of your new subtree must have \`parentId\` set to \`\"parent\"\`. All other elements in the array must set \`parentId\` matching the temporary \`id\` of their parent in that same array.
        - Create missing routes with create_new_route.
        - For any tool arg named route, always use URL paths with forward slashes (e.g. '/', '/pricing'); never use '\\' or filesystem paths like 'app/pricing'.
-       - insert_element supports optional before_id to insert before an existing sibling; if omitted or not found, it appends to the end.
+       - insert_element supports optional before_id to insert before an existing sibling; if omitted or not found, it appends to the end. Use this to do things like inserting navbar before the main content area, etc.
        - Include images whenever mentoned to be included. Just use alt tag for images. image src auto-generated from alt
        - lucide-react icons only
        - Prefer semantic Tailwind tokens (bg-background, text-foreground, border-border, ring-ring, etc.) over hardcoded colors (e.g. slate-*, bg-white) for global styles. If you need different global colors/radius, call update_global_styles first, then use token-based classes.

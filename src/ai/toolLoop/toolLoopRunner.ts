@@ -35,7 +35,11 @@ export type ToolLoopResult = {
   };
 };
 
-export type Logger = (message: string, eventType: EventType) => Promise<void>;
+export type Logger = (
+  message: string,
+  eventType: EventType,
+  displayedSummary?: boolean,
+) => Promise<void>;
 
 export type AiCallResponse = {
   functionCalls?: any[];
@@ -461,8 +465,6 @@ export async function runToolLoop(
       }
 
       if (name === "update_global_styles") {
-        // Be forgiving: models sometimes include a legacy "tokens" key or other junk.
-        // We accept the call as long as at least one valid token key/value is provided.
         const tokensMaybe = (effectiveArgs as any)?.tokens;
         const normalized: Record<string, unknown> = {};
 
@@ -486,6 +488,7 @@ export async function runToolLoop(
       logger(
         buildToolStatusMessage(name, effectiveArgs, readFileMeta),
         EVENT_TYPES.STEP_STARTED,
+        true,
       );
 
       const modelArgs = redactFunctionCallArgs(name, effectiveArgs);
@@ -567,7 +570,7 @@ export async function runToolLoop(
             toolResultRaw = await handler(effectiveArgs);
           }
         } catch (err) {
-          logger(`AI tool: ${name} failed`, EVENT_TYPES.STEP_ERROR);
+          logger(`AI tool: ${name} failed`, EVENT_TYPES.STEP_ERROR, true);
           console.error("Tool loop: handler threw", err, {
             tool: name,
             step: step + 1,

@@ -114,24 +114,101 @@ export const buildToolStatusMessage = (
   name: string,
   effectiveArgs: Record<string, unknown>,
   readFileMeta: { start: number; end: number; wasCapped: boolean } | null,
-) => {
-  if (name === "read_file" && readFileMeta) {
-    return `AI tool: read_file (${readFileMeta.start}-${readFileMeta.end}${
-      readFileMeta.wasCapped ? ", capped" : ""
-    })`;
+): string => {
+  if (name === "read_file") {
+    const path = typeof effectiveArgs.path === "string" ? effectiveArgs.path : "";
+    if (readFileMeta) {
+      return `AI tool: Reading file "${path}" (lines ${readFileMeta.start}-${readFileMeta.end}${
+        readFileMeta.wasCapped ? ", capped" : ""
+      })`;
+    }
+    const start = effectiveArgs.start_line !== undefined ? Number(effectiveArgs.start_line) : 1;
+    const end = effectiveArgs.end_line !== undefined ? Number(effectiveArgs.end_line) : undefined;
+    const lines = end !== undefined ? `lines ${start}-${end}` : `starting at line ${start}`;
+    return `AI tool: Reading file "${path}" (${lines})`;
+  }
+
+  if (name === "write_file") {
+    const path = typeof effectiveArgs.path === "string" ? effectiveArgs.path : "";
+    return `AI tool: Writing file "${path}"`;
   }
 
   if (name === "apply_patch") {
     const meta = getApplyPatchEventMeta(effectiveArgs);
-    const files = Array.isArray(meta.files) ? meta.files.length : 0;
-    return `AI tool: apply_patch (${files} file${files === 1 ? "" : "s"})`;
+    const files = Array.isArray(meta.files) ? meta.files : [];
+    if (files.length === 0) {
+      return "AI tool: Applying patch";
+    }
+    if (files.length <= 3) {
+      return `AI tool: Applying changes to "${files.join(", ")}"`;
+    }
+    return `AI tool: Applying changes to ${files.length} files: "${files.slice(0, 3).join(", ")}" (+${files.length - 3} more)`;
   }
 
-  if (name === "search") return "AI tool: search";
-  if (name === "list_dir") return "AI tool: list_dir";
-  if (name === "write_file") return "AI tool: write_file";
-  if (name === "submit_planner_tasks") return "AI tool: submit_planner_tasks";
-  if (name === "submit_codegen_done") return "AI tool: submit_codegen_done";
+  if (name === "search") {
+    const query = typeof effectiveArgs.search_query === "string" ? effectiveArgs.search_query : "";
+    return query ? `AI tool: Searching workspace for "${query}"` : "AI tool: Searching workspace";
+  }
+
+  if (name === "list_dir") {
+    const path = typeof effectiveArgs.path === "string" ? effectiveArgs.path : "";
+    const depth = effectiveArgs.depth !== undefined ? Number(effectiveArgs.depth) : 1;
+    return `AI tool: Listing contents of directory "${path}" (depth: ${depth})`;
+  }
+
+  if (name === "update_global_styles") {
+    const keys = Object.keys(effectiveArgs);
+    return keys.length > 0
+      ? `AI tool: Updating global styles (${keys.join(", ")})`
+      : "AI tool: Updating global styles";
+  }
+
+  if (name === "create_new_route") {
+    const route = typeof effectiveArgs.route_name === "string" ? effectiveArgs.route_name : "";
+    const parent = typeof effectiveArgs.parent_route === "string" ? effectiveArgs.parent_route : "/";
+    return `AI tool: Creating new route "${route}" (parent: "${parent}")`;
+  }
+
+  if (name === "delete_element") {
+    const route = typeof effectiveArgs.route === "string" ? effectiveArgs.route : "";
+    const id = typeof effectiveArgs.element_id === "string" ? effectiveArgs.element_id : "";
+    return `AI tool: Deleting element "${id}" from route "${route}"`;
+  }
+
+  if (name === "insert_element") {
+    const route = typeof effectiveArgs.route === "string" ? effectiveArgs.route : "";
+    const parent = typeof effectiveArgs.parent_id === "string" ? effectiveArgs.parent_id : "";
+    const before = typeof effectiveArgs.before_id === "string" ? effectiveArgs.before_id : "";
+    const beforeStr = before ? `, before "${before}"` : "";
+    return `AI tool: Inserting element into route "${route}" (under parent "${parent}"${beforeStr})`;
+  }
+
+  if (name === "update_props") {
+    const route = typeof effectiveArgs.route === "string" ? effectiveArgs.route : "";
+    const id = typeof effectiveArgs.element_id === "string" ? effectiveArgs.element_id : "";
+    return `AI tool: Updating properties for element "${id}" on route "${route}"`;
+  }
+
+  if (name === "update_classname") {
+    const route = typeof effectiveArgs.route === "string" ? effectiveArgs.route : "";
+    const id = typeof effectiveArgs.element_id === "string" ? effectiveArgs.element_id : "";
+    const className = typeof effectiveArgs.class_name === "string" ? effectiveArgs.class_name : "";
+    const classNameStr = className ? ` to "${className}"` : "";
+    return `AI tool: Updating class name for element "${id}" on route "${route}"${classNameStr}`;
+  }
+
+  if (name === "get_available_routes") {
+    return "AI tool: Retrieving available routes";
+  }
+
+  if (name === "submit_planner_tasks") {
+    return "AI tool: Submitting planner tasks";
+  }
+
+  if (name === "submit_codegen_done") {
+    const summary = typeof effectiveArgs.summary === "string" ? effectiveArgs.summary : "";
+    return summary ? `AI tool: Submitting completed work: "${summary}"` : "AI tool: Submitting completed work";
+  }
 
   return `AI tool: ${name}`;
 };
