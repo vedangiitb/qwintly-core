@@ -30,7 +30,7 @@ export class GenerateGeminiReponse {
     const {
       tools,
       schema,
-      toolCallingMode = FunctionCallingConfigMode.AUTO,
+      toolCallingMode = FunctionCallingConfigMode.ANY,
     } = options;
 
     const config: GenerateContentConfig = {};

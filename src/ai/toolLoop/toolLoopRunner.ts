@@ -1,27 +1,33 @@
 import { FunctionCallingConfigMode, Tool } from "@google/genai";
-import fs from "node:fs/promises";
 import type { GenTokensRepository } from "../../repository/genTokens.repository.js";
 import { persistToolCall } from "../../services/toolcallPersist.service.js";
 import { EVENT_TYPES, EventType } from "../../types/events.js";
 import { STYLE_TOKEN_KEYS } from "../../types/styleConfig.js";
-import { getAvailableRoutes } from "../tools/helpers/pageConfigJson.helpers.js";
 import { createWorkspaceToolImpls } from "../tools/implementations/factories.js";
-import { CoreFs } from "../tools/implementations/workspaceDeps.js";
-import { parsePlannerTasksUnknown } from "./plannerTaskParser.js";
+import { aiCallWithRetry } from "./helpers/aiCall.helper.js";
+import { serializeError } from "./helpers/errors.helper.js";
+import { nodeFs } from "./helpers/fsHelpers.js";
+import { handleApplyPatchFailure } from "./helpers/patchRetry.helper.js";
+import {
+  extractUsageTokenCounts,
+  persistTokensOnce,
+} from "./helpers/persistTokens.helpers.js";
+import { extractThoughtSignatures } from "./helpers/signatures.helper.js";
+import { normalizeToolArgs } from "./helpers/toolArgs.helper.js";
+import {
+  executeToolHandler,
+  postProcessToolResult,
+} from "./helpers/toolExecution.helper.js";
+import { createToolHandlers } from "./helpers/toolHandlers.helper.js";
+import { recordToolEvent } from "./toolEventSummary.js";
 import {
   compactForModel,
   DEFAULT_CONTEXT_POLICY,
-  normalizeReadFileArgs,
   redactFunctionCallArgs,
   ToolEvent,
   ToolLoopContextPolicy,
 } from "./toolLoopContext.js";
-import {
-  aiCallWithRetry,
-  buildToolStatusMessage,
-  recordToolEvent,
-  serializeError,
-} from "./toolLoopRunnerUtils.js";
+import { buildToolStatusMessage } from "./toolStatusMessage.js";
 
 export type ToolLoopResult = {
   contents: any[];
@@ -55,6 +61,12 @@ export type AiCallFn = (
   },
 ) => Promise<AiCallResponse>;
 
+export type TokenPersistence = {
+  repository: Pick<GenTokensRepository, "persistGenTokens">;
+  sessionId: string;
+  model: string;
+};
+
 export type RunToolLoopOptions = {
   initialContents: any[];
   tools: Tool[];
@@ -71,19 +83,12 @@ export type RunToolLoopOptions = {
   aiCallAutoRetryBaseMs?: number;
   aiCallAutoRetryMaxMs?: number;
   persistResponse?: (modelInput: any, modelOutput: any) => Promise<void>;
-  tokenPersistence?: {
-    repository: Pick<GenTokensRepository, "persistGenTokens">;
-    sessionId: string;
-    model: string;
-  };
+  tokenPersistence?: TokenPersistence;
 };
 
 export async function runToolLoop(
   options: RunToolLoopOptions,
 ): Promise<ToolLoopResult> {
-  const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-    typeof value === "object" && value !== null && !Array.isArray(value);
-
   const styleTokenKeySet = new Set<string>(
     STYLE_TOKEN_KEYS as unknown as string[],
   );
@@ -107,149 +112,19 @@ export async function runToolLoop(
     tokenPersistence,
   } = options;
 
-  const extractUsageTokenCounts = (rawResponse: unknown) => {
-    const usage = (rawResponse as any)?.usageMetadata;
-    const promptTokenCount = usage?.promptTokenCount;
-    const candidatesTokenCount = usage?.candidatesTokenCount;
-
-    const inputTokens = Number(promptTokenCount);
-    const outputTokens = Number(candidatesTokenCount);
-
-    if (!Number.isFinite(inputTokens) || inputTokens < 0) return null;
-    if (!Number.isFinite(outputTokens) || outputTokens < 0) return null;
-
-    return { inputTokens, outputTokens };
-  };
-
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let sawAnyTokenUsage = false;
-
-  const persistTokensOnce = async () => {
-    if (!tokenPersistence) return;
-    if (!sawAnyTokenUsage) return;
-
-    try {
-      await tokenPersistence.repository.persistGenTokens(
-        tokenPersistence.sessionId,
-        totalInputTokens,
-        totalOutputTokens,
-        tokenPersistence.model,
-      );
-    } catch (err) {
-      console.error("Tool loop: failed to persist gen tokens", err);
-    }
-  };
-
-  const nodeFs: CoreFs = {
-    readFile: async (absolutePath) => fs.readFile(absolutePath, "utf-8"),
-    writeFile: async (absolutePath, content) =>
-      fs.writeFile(absolutePath, content ?? "", "utf-8"),
-    mkdirp: async (absoluteDir) => {
-      await fs.mkdir(absoluteDir, { recursive: true });
-    },
-    rmFile: async (absolutePath) => fs.rm(absolutePath, { force: true }),
-    stat: async (absolutePath) => fs.stat(absolutePath),
-    safeReadDir: async (absoluteDir) =>
-      fs.readdir(absoluteDir, { withFileTypes: true }),
-  };
 
   const impls = createWorkspaceToolImpls({
     workspaceRoot,
     fs: nodeFs,
   });
 
-  const toolHandlers: Record<string, (args: any) => Promise<any>> = {
-    read_file: async (args) => {
-      const path = String(args.path ?? "");
-      const startLine =
-        args.start_line === undefined ? undefined : Number(args.start_line);
-      const endLine =
-        args.end_line === undefined ? undefined : Number(args.end_line);
-      const content = await impls.readFileImpl(path, startLine, endLine);
-      return { path, content };
-    },
-    write_file: (args) =>
-      impls.writeFileImpl(String(args.path ?? ""), String(args.content ?? "")),
-    list_dir: async (args) => {
-      const content = await impls.listDirImpl(
-        String(args.path ?? ""),
-        Number(args.depth ?? 1),
-      );
-      return { content };
-    },
-    search: async (args) => {
-      const results = await impls.searchImpl(String(args.search_query ?? ""));
-      return { results };
-    },
-    apply_patch: (args) =>
-      impls.applyPatchImpl(String(args.patch_string ?? "")),
-    update_global_styles: async (args) => {
-      const result = await impls.updateGlobalStylesImpl(args);
-      return result;
-    },
-    create_new_route: async (args) => {
-      const parentRoute = String(args.parent_route ?? "");
-      const routeName = String(args.route_name ?? "");
-      const result = await impls.createNewRouteImpl(parentRoute, routeName);
-      return result;
-    },
-    delete_element: async (args) => {
-      const route = String(args.route ?? "");
-      const element_id = String(args.element_id ?? "");
-      const result = await impls.deleteElementImpl(route, element_id);
-      return result;
-    },
-    insert_element: async (args) => {
-      const result = await impls.insertElementImpl(args);
-      if (!result.success) {
-        const available = await getAvailableRoutes({
-          workspaceRoot,
-          fs: nodeFs,
-        });
-        return {
-          success: false,
-          error: `insert_element failed: ${result.error}. Available routes are: ${JSON.stringify(available)}. If you intend to create a new route, create it using the 'create_new_route' tool.`,
-          available_routes: available,
-        };
-      }
-      return result;
-    },
-    update_props: async (args) => {
-      const route = String(args.route ?? "");
-      const element_id = String(args.element_id ?? "");
-      const props: any = args.props;
-      const result = await impls.updatePropsImpl({
-        route,
-        element_id,
-        ...props,
-      });
-      return result;
-    },
-    update_classname: async (args) => {
-      const route = String(args.route ?? "");
-      const element_id = String(args.element_id ?? "");
-      const class_name = String(args.class_name ?? "");
-      const result = await impls.updateClassNameImpl(
-        route,
-        element_id,
-        class_name,
-      );
-      return result;
-    },
-    get_available_routes: async (args) => {
-      const routes = await getAvailableRoutes({ workspaceRoot, fs: nodeFs });
-      return { success: true, routes };
-    },
-    submit_codegen_done: async (args) => ({
-      success: true,
-      summary: String(args.summary ?? "").trim(),
-    }),
-    submit_planner_tasks: async (args) => {
-      const tasks = parsePlannerTasksUnknown(args.planner_tasks);
-      return { success: true, count: tasks.length };
-    },
-  };
+  const toolHandlers = createToolHandlers({
+    impls,
+    workspaceRoot,
+  });
 
   if (typeof aiCall !== "function") {
     throw new Error("Tool loop: aiCall is required.");
@@ -366,7 +241,12 @@ export async function runToolLoop(
 
     const functionCalls = response.functionCalls ?? [];
     if (functionCalls.length === 0) {
-      await persistTokensOnce();
+      await persistTokensOnce(
+        tokenPersistence,
+        sawAnyTokenUsage,
+        totalInputTokens,
+        totalOutputTokens,
+      );
       return {
         contents: keepFullTrace ? fullTraceContents : modelContents,
         modelContents,
@@ -375,27 +255,7 @@ export async function runToolLoop(
       };
     }
 
-    const signatureById = (() => {
-      try {
-        const candidates = Array.isArray((response as any)?.candidates)
-          ? ((response as any).candidates as any[])
-          : [];
-        const parts = candidates?.[0]?.content?.parts;
-        const arr = Array.isArray(parts) ? (parts as any[]) : [];
-        const map = new Map<string, string>();
-        for (const p of arr) {
-          const fc = p?.functionCall;
-          const id = fc?.id;
-          const sig = p?.thoughtSignature ?? p?.thought_signature;
-          if (typeof id === "string" && typeof sig === "string" && sig) {
-            map.set(id, sig);
-          }
-        }
-        return map;
-      } catch {
-        return new Map<string, string>();
-      }
-    })();
+    const signatureById = extractThoughtSignatures(response);
 
     for (let callIndex = 0; callIndex < functionCalls.length; callIndex++) {
       const call = functionCalls[callIndex];
@@ -434,56 +294,15 @@ export async function runToolLoop(
       }
 
       const handler = toolHandlers[name];
-      const handlerMissingResult = !handler
-        ? {
-            success: false,
-            error: `No handler registered for "${name}".`,
-            error_detail: {
-              name: "MissingToolHandlerError",
-              message: `No handler registered for "${name}".`,
-            },
-          }
-        : null;
 
-      let effectiveArgs: Record<string, unknown> = args;
-      let readFileMeta: {
-        start: number;
-        end: number;
-        wasCapped: boolean;
-      } | null = null;
-      if (name === "read_file") {
-        const normalized = normalizeReadFileArgs(
-          effectiveArgs,
-          policy.readFileDefaultMaxLines,
-        );
-        effectiveArgs = normalized.effectiveArgs;
-        readFileMeta = {
-          start: normalized.start,
-          end: normalized.end,
-          wasCapped: normalized.wasCapped,
-        };
-      }
-
-      if (name === "update_global_styles") {
-        const tokensMaybe = (effectiveArgs as any)?.tokens;
-        const normalized: Record<string, unknown> = {};
-
-        if (isPlainObject(tokensMaybe)) {
-          for (const [k, v] of Object.entries(tokensMaybe)) {
-            if (!styleTokenKeySet.has(k)) continue;
-            if (typeof v !== "string") continue;
-            normalized[k] = v;
-          }
+      const { effectiveArgs, readFileMeta } = normalizeToolArgs(
+        name,
+        args,
+        {
+          readFileDefaultMaxLines: policy.readFileDefaultMaxLines,
+          styleTokenKeySet,
         }
-
-        for (const [k, v] of Object.entries(effectiveArgs ?? {})) {
-          if (!styleTokenKeySet.has(k)) continue;
-          if (typeof v !== "string") continue;
-          normalized[k] = v;
-        }
-
-        effectiveArgs = normalized;
-      }
+      );
 
       logger(
         buildToolStatusMessage(name, effectiveArgs, readFileMeta),
@@ -543,78 +362,22 @@ export async function runToolLoop(
         pushModelOnly(assistantModel);
       }
 
-      let toolResultRaw: unknown;
-      if (handlerMissingResult) {
-        toolResultRaw = handlerMissingResult;
-      } else {
-        try {
-          if (name === "update_global_styles") {
-            const flatKeys = Object.keys(effectiveArgs ?? {}).filter((k) =>
-              styleTokenKeySet.has(k),
-            );
-            if (flatKeys.length === 0) {
-              toolResultRaw = {
-                success: false,
-                error: "must include at least one token key/value",
-                error_detail: {
-                  name: "InvalidToolArgumentsError",
-                  message:
-                    'update_global_styles requires at least one token key/value (e.g. { radius: "0.75rem" }).',
-                },
-                note: "Resend update_global_styles with at least one token key/value, or skip this tool call.",
-              };
-            } else {
-              toolResultRaw = await handler(effectiveArgs);
-            }
-          } else {
-            toolResultRaw = await handler(effectiveArgs);
-          }
-        } catch (err) {
-          logger(`AI tool: ${name} failed`, EVENT_TYPES.STEP_ERROR, true);
-          console.error("Tool loop: handler threw", err, {
-            tool: name,
-            step: step + 1,
-          });
-          toolResultRaw = {
-            success: false,
-            error: err instanceof Error ? err.message : String(err),
-            error_detail: serializeError(err),
-            note: "Tool handler threw. Inspect error_detail and retry with corrected args or a different approach.",
-          };
-        }
-      }
-      let toolResult: unknown = toolResultRaw;
+      const toolResultRaw = await executeToolHandler({
+        name,
+        handler,
+        effectiveArgs,
+        styleTokenKeySet,
+        step: step + 1,
+        logger,
+      });
 
-      if (name === "read_file" && readFileMeta) {
-        const path = String(effectiveArgs.path ?? "");
-
-        const jsonPayload =
-          (toolResultRaw as any)?.kind === "json"
-            ? (toolResultRaw as any)?.json
-            : undefined;
-        if (jsonPayload !== undefined) {
-          // Token-efficient: return JSON as structured data (no double-stringifying).
-          toolResult = { path, json: jsonPayload };
-        } else {
-          const rawContent =
-            typeof (toolResultRaw as any)?.content === "string"
-              ? String((toolResultRaw as any).content)
-              : typeof toolResultRaw === "string"
-                ? toolResultRaw
-                : JSON.stringify(toolResultRaw ?? null);
-
-          toolResult = {
-            path,
-            start_line: readFileMeta.start,
-            end_line: readFileMeta.end,
-            truncated: readFileMeta.wasCapped,
-            content: rawContent,
-            note: readFileMeta.wasCapped
-              ? `Capped to ${policy.readFileDefaultMaxLines} lines. Request more with start_line/end_line.`
-              : undefined,
-          };
-        }
-      }
+      const toolResult = postProcessToolResult({
+        name,
+        toolResultRaw,
+        effectiveArgs,
+        readFileMeta,
+        readFileDefaultMaxLines: policy.readFileDefaultMaxLines,
+      });
 
       try {
         await persistToolCall(name, modelArgs, toolResult);
@@ -648,44 +411,15 @@ export async function runToolLoop(
         applyPatchAutoRetryMax > 0 &&
         applyPatchRetryCount < applyPatchAutoRetryMax
       ) {
-        applyPatchRetryCount += 1;
-
-        const error = String((toolResult as any)?.error ?? "unknown error");
-        const debugFiles = Array.isArray((toolResult as any)?.debug?.files)
-          ? ((toolResult as any).debug.files as Array<{
-              path?: string;
-              head?: string;
-            }>)
-          : [];
-
-        const debugText =
-          debugFiles.length > 0
-            ? `\n\nFILE SNAPSHOTS (for regenerating the patch):\n${debugFiles
-                .slice(0, 3)
-                .map(
-                  (f) =>
-                    `--- ${String(f.path ?? "")} ---\n${String(
-                      f.head ?? "",
-                    )}\n--- end ---`,
-                )
-                .join("\n\n")}`
-            : "";
-
-        const retryInstruction = {
-          role: "user",
-          parts: [
-            {
-              text:
-                `apply_patch failed (attempt ${applyPatchRetryCount}/${applyPatchAutoRetryMax}): ${error}\n` +
-                `Regenerate a patch that matches the current file contents. ` +
-                `For large rewrites, prefer write_file(path, content) or Delete+Add instead of Update.` +
-                debugText,
-            },
-          ],
-        };
-
-        if (keepFullTrace) fullTraceContents.push(retryInstruction);
-        modelContents.push(retryInstruction);
+        const failureResult = handleApplyPatchFailure({
+          toolResult,
+          applyPatchAutoRetryMax,
+          applyPatchRetryCount,
+          keepFullTrace,
+          fullTraceContents,
+          modelContents,
+        });
+        applyPatchRetryCount = failureResult.applyPatchRetryCount;
       }
 
       recordToolEvent({
@@ -699,7 +433,12 @@ export async function runToolLoop(
       });
 
       if (terminalToolNames.includes(name)) {
-        await persistTokensOnce();
+        await persistTokensOnce(
+          tokenPersistence,
+          sawAnyTokenUsage,
+          totalInputTokens,
+          totalOutputTokens,
+        );
         return {
           contents: keepFullTrace ? fullTraceContents : modelContents,
           modelContents,
@@ -711,7 +450,12 @@ export async function runToolLoop(
     }
   }
 
-  await persistTokensOnce();
+  await persistTokensOnce(
+    tokenPersistence,
+    sawAnyTokenUsage,
+    totalInputTokens,
+    totalOutputTokens,
+  );
   return {
     contents: keepFullTrace ? fullTraceContents : modelContents,
     modelContents,

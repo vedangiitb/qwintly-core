@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PlannerTask } from "../../types/plannerTasks.types.js";
+import { PlannerTask } from "../../../types/plannerTasks.types.js";
 
 export const PlannerTaskSchema = z.object({
   description: z.string().min(1),
