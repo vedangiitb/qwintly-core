@@ -249,6 +249,15 @@ export const getAvailableRoutes = async (deps: {
   return routes.sort();
 };
 
+const isCatchAll = (segment: string): boolean =>
+  segment.startsWith("[") && segment.endsWith("]") && segment.includes("...");
+
+const isDynamic = (segment: string): boolean =>
+  segment.startsWith("[") && segment.endsWith("]");
+
+const isOptionalCatchAll = (segment: string): boolean =>
+  segment.startsWith("[[") && segment.endsWith("]]") && segment.includes("...");
+
 export const matchRoute = (physicalRoute: string, requestedRoute: string): boolean => {
   const physSegs = normalizeRouteSegments(physicalRoute);
   const reqSegs = normalizeRouteSegments(requestedRoute);
@@ -260,20 +269,11 @@ export const matchRoute = (physicalRoute: string, requestedRoute: string): boole
     const phys = physSegs[pIdx];
     const req = reqSegs[rIdx];
 
-    // Catch-all (e.g. [...slug] or [[...slug]])
-    if (phys.startsWith("[") && phys.endsWith("]") && phys.includes("...")) {
+    if (isCatchAll(phys)) {
       return true;
     }
 
-    // Regular dynamic segment (e.g. [id])
-    if (phys.startsWith("[") && phys.endsWith("]")) {
-      pIdx++;
-      rIdx++;
-      continue;
-    }
-
-    // Exact match
-    if (phys.toLowerCase() === req.toLowerCase()) {
+    if (isDynamic(phys) || phys.toLowerCase() === req.toLowerCase()) {
       pIdx++;
       rIdx++;
       continue;
@@ -282,17 +282,8 @@ export const matchRoute = (physicalRoute: string, requestedRoute: string): boole
     return false;
   }
 
-  // Handle case where we ran out of requested segments but have remaining physical segments
-  // e.g. physical is /blog/[[...slug]] (optional catch-all) and request is /blog
   if (rIdx === reqSegs.length && pIdx < physSegs.length) {
-    // All remaining physical segments must be optional catch-alls (e.g., [[...slug]])
-    for (let i = pIdx; i < physSegs.length; i++) {
-      const phys = physSegs[i];
-      if (!(phys.startsWith("[[") && phys.endsWith("]]") && phys.includes("..."))) {
-        return false;
-      }
-    }
-    return true;
+    return physSegs.slice(pIdx).every(isOptionalCatchAll);
   }
 
   return pIdx === physSegs.length && rIdx === reqSegs.length;

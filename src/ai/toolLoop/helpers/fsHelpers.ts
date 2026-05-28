@@ -11,8 +11,8 @@ export const extractPatchFiles = (patchString: string): string[] => {
 
   for (const line of lines) {
     const match =
-      /^\*\*\* (Update File|Add File|Delete File):\s+(.+)$/.exec(line) ??
-      /^\*\*\* Move to:\s+(.+)$/.exec(line);
+      /^\*\*\* (Update File|Add File|Delete File):\s+(\S.*)$/.exec(line) ??
+      /^\*\*\* Move to:\s+(\S.*)$/.exec(line);
 
     if (!match) continue;
 

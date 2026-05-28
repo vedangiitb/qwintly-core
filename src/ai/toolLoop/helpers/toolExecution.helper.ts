@@ -72,7 +72,7 @@ export function postProcessToolResult(params: {
   const { name, toolResultRaw, effectiveArgs, readFileMeta, readFileDefaultMaxLines } = params;
 
   if (name === "read_file" && readFileMeta) {
-    const path = String(effectiveArgs.path ?? "");
+    const path = typeof effectiveArgs.path === "string" ? effectiveArgs.path : "";
 
     const originalJsonPayload =
       (toolResultRaw as any)?.kind === "json"

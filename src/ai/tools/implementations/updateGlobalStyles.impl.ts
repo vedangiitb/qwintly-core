@@ -46,12 +46,13 @@ const extractAllValidTokens = (value: unknown): Partial<Record<StyleTokenKey, st
       } catch {}
 
       // If it's a string and not valid JSON, try to extract key-value patterns (e.g. key: "value", "key": 'value', etc.)
-      const regex = /(?:["']?([a-zA-Z0-9_-]+)["']?\s*:\s*["']([^"']+)["'])/g;
+      const regex = /(?:(?:["']([a-zA-Z0-9_-]+)["']|([a-zA-Z0-9_-]+))\s*:\s*["']([^"']+)["'])/g;
       let match;
       let foundAny = false;
       while ((match = regex.exec(trimmedVal)) !== null) {
-        const [, k, v] = match;
-        if (allowed.has(k) && isSafeCssValue(v)) {
+        const k = match[1] ?? match[2];
+        const v = match[3];
+        if (k && allowed.has(k) && isSafeCssValue(v)) {
           out[k] = v.trim();
           foundAny = true;
         }

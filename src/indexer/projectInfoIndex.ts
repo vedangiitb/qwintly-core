@@ -19,15 +19,10 @@ const computePageNameFromRoute = (pageRoute: string): string => {
   return pageRoute.slice(1).split("/").join("-");
 };
 
-const extractSectionNamesFromParsedConfig = (config: any): string[] => {
-  if (!config || !Array.isArray(config.elements)) return [];
-
-  const elements = config.elements;
-
-  // Let's find the root element (where type === "div" && id === "root") recursively
+const findRootElement = (els: any[]): any => {
   let rootElement: any = null;
-  const findRoot = (els: any[]) => {
-    for (const el of els) {
+  const findRoot = (items: any[]) => {
+    for (const el of items) {
       if (el && typeof el === "object") {
         if (el.type === "div" && el.id === "root") {
           rootElement = el;
@@ -40,30 +35,31 @@ const extractSectionNamesFromParsedConfig = (config: any): string[] => {
       }
     }
   };
-  findRoot(elements);
+  findRoot(els);
+  return rootElement;
+};
 
-  if (rootElement && Array.isArray(rootElement.children)) {
-    const rootSections: string[] = [];
-    for (const child of rootElement.children) {
-      if (
-        child &&
-        typeof child === "object" &&
-        child.type === "div" &&
-        child.id &&
-        child.id !== "root"
-      ) {
-        const name = sectionNameFromId(child.id);
-        if (name) {
-          rootSections.push(name);
-        }
+const extractRootSections = (rootElement: any): string[] => {
+  if (!rootElement || !Array.isArray(rootElement.children)) return [];
+  const rootSections: string[] = [];
+  for (const child of rootElement.children) {
+    if (
+      child &&
+      typeof child === "object" &&
+      child.type === "div" &&
+      child.id &&
+      child.id !== "root"
+    ) {
+      const name = sectionNameFromId(child.id);
+      if (name) {
+        rootSections.push(name);
       }
     }
-    if (rootSections.length > 0) {
-      return rootSections;
-    }
   }
+  return rootSections;
+};
 
-  // Fallback: collect all divs with id ending in "-section" or "-container"
+const collectFallbackSections = (elements: any[]): string[] => {
   const seen = new Set<string>();
   const results: string[] = [];
   const collectFallback = (els: any[]) => {
@@ -91,6 +87,18 @@ const extractSectionNamesFromParsedConfig = (config: any): string[] => {
   return results;
 };
 
+const extractSectionNamesFromParsedConfig = (config: any): string[] => {
+  if (!config || !Array.isArray(config.elements)) return [];
+
+  const rootElement = findRootElement(config.elements);
+  const rootSections = extractRootSections(rootElement);
+  if (rootSections.length > 0) {
+    return rootSections;
+  }
+
+  return collectFallbackSections(config.elements);
+};
+
 export async function computeProjectInfo(
   rootDir: string,
 ): Promise<ProjectInfo> {
@@ -113,7 +121,7 @@ export async function computeProjectInfo(
         const config = JSON.parse(content);
         sectionNames = extractSectionNamesFromParsedConfig(config);
       }
-    } catch (err) {
+    } catch {
       // Ignore reading/parsing errors, treat as no sections
     }
 

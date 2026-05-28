@@ -23,32 +23,38 @@ export const serializeError = (err: unknown) => {
   };
 };
 
+const isSingleNodeTransient = (node: any): boolean => {
+  if (!node) return false;
+  const code =
+    node.error?.code ?? node.code ?? node.statusCode ?? node.response?.status;
+
+  const status =
+    node.error?.status ?? node.status ?? node.response?.data?.error?.status;
+
+  const message =
+    node.error?.message ??
+    node.message ??
+    node.response?.data?.error?.message;
+
+  const msg = typeof message === "string" ? message.toLowerCase() : "";
+  const stat = typeof status === "string" ? status.toUpperCase() : "";
+
+  return (
+    code === 503 ||
+    code === 429 ||
+    stat === "UNAVAILABLE" ||
+    stat === "RESOURCE_EXHAUSTED" ||
+    msg.includes("high demand") ||
+    msg.includes("try again later") ||
+    msg.includes("temporar")
+  );
+};
+
 export const isTransientAiCallError = (err: unknown) => {
   let cur: any = err as any;
   for (let depth = 0; depth < 4 && cur; depth++) {
-    const code =
-      cur?.error?.code ?? cur?.code ?? cur?.statusCode ?? cur?.response?.status;
-
-    const status =
-      cur?.error?.status ?? cur?.status ?? cur?.response?.data?.error?.status;
-
-    const message =
-      cur?.error?.message ??
-      cur?.message ??
-      cur?.response?.data?.error?.message;
-
-    const msg = typeof message === "string" ? message.toLowerCase() : "";
-    const stat = typeof status === "string" ? status.toUpperCase() : "";
-
-    if (code === 503) return true;
-    if (code === 429) return true;
-    if (stat === "UNAVAILABLE") return true;
-    if (stat === "RESOURCE_EXHAUSTED") return true;
-    if (msg.includes("high demand")) return true;
-    if (msg.includes("try again later")) return true;
-    if (msg.includes("temporar")) return true;
-
-    cur = cur?.cause;
+    if (isSingleNodeTransient(cur)) return true;
+    cur = cur.cause;
   }
 
   return false;

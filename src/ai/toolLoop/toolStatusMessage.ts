@@ -23,12 +23,12 @@ const buildReadFileStatus: StatusMessageBuilder = ({
   }
 
   const start =
-    effectiveArgs.start_line !== undefined ? Number(effectiveArgs.start_line) : 1;
+    effectiveArgs.start_line === undefined ? 1 : Number(effectiveArgs.start_line);
   const end =
-    effectiveArgs.end_line !== undefined
-      ? Number(effectiveArgs.end_line)
-      : undefined;
-  const lines = end !== undefined ? `lines ${start}-${end}` : `starting at line ${start}`;
+    effectiveArgs.end_line === undefined
+      ? undefined
+      : Number(effectiveArgs.end_line);
+  const lines = end === undefined ? `starting at line ${start}` : `lines ${start}-${end}`;
   return `AI tool: Reading file "${path}" (${lines})`;
 };
 
@@ -61,7 +61,7 @@ const buildSearchStatus: StatusMessageBuilder = ({ name, effectiveArgs }) => {
 const buildListDirStatus: StatusMessageBuilder = ({ name, effectiveArgs }) => {
   if (name !== "list_dir") return null;
   const path = typeof effectiveArgs.path === "string" ? effectiveArgs.path : "";
-  const depth = effectiveArgs.depth !== undefined ? Number(effectiveArgs.depth) : 1;
+  const depth = effectiveArgs.depth === undefined ? 1 : Number(effectiveArgs.depth);
   return `AI tool: Listing contents of directory "${path}" (depth: ${depth})`;
 };
 

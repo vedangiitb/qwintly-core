@@ -22,7 +22,7 @@ function reconstructTree(flatElements: any[]): BuilderElement[] {
       type: flat.type,
       className: flat.className,
       visible: flat.visible,
-      props: flat.props ? JSON.parse(JSON.stringify(flat.props)) : undefined,
+      props: flat.props ? structuredClone(flat.props) : undefined,
       children: [],
     });
   }
@@ -111,13 +111,9 @@ export const createInsertElementImpl = (deps: WorkspaceDeps) => {
       anyParent.children = [];
 
     const children = anyParent.children as BuilderElement[];
-    if (before_id) {
-      const idx = children.findIndex((c: any) => String(c?.id ?? "") === before_id);
-      if (idx >= 0) {
-        children.splice(idx, 0, ...toInsert);
-      } else {
-        children.push(...toInsert);
-      }
+    const idx = before_id ? children.findIndex((c: any) => String(c?.id ?? "") === before_id) : -1;
+    if (idx >= 0) {
+      children.splice(idx, 0, ...toInsert);
     } else {
       children.push(...toInsert);
     }

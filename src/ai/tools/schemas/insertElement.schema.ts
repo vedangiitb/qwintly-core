@@ -22,9 +22,7 @@ export const InsertElementSchema = {
     properties: {
       route: {
         type: Type.STRING,
-        // Accept both "/about" and "about" (caller might omit the leading slash).
-        pattern:
-          "^(?:/(?:[A-Za-z0-9_.[\\\\\]-]+(?:/[A-Za-z0-9_.[\\\\\]-]+)*)?|[A-Za-z0-9_.[\\\\\]-]+(?:/[A-Za-z0-9_.[\\\\\]-]+)*)$",
+        pattern: String.raw`^(?:/(?:[A-Za-z0-9_.[\\\]-]+(?:/[A-Za-z0-9_.[\\\]-]+)*)?|[A-Za-z0-9_.[\\\]-]+(?:/[A-Za-z0-9_.[\\\]-]+)*)$`,
         description:
           "The route to insert the element at. Use URL paths with forward slashes only. Examples: '/', '/about', '/pricing'. If you forget the leading '/', it will be assumed (e.g. 'about' -> '/about'). Never send Windows-style backslashes (e.g. '\\\\') or filesystem paths like 'app/pricing'. Never send empty string.",
       },

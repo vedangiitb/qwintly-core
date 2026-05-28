@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 import { BuilderElement } from "../types/elements.js";
 
 export interface ResolvedImage {
@@ -49,8 +49,13 @@ export function initUnsplash(
     return;
   }
 
+  let cleanedUrl = url;
+  while (cleanedUrl.endsWith("/")) {
+    cleanedUrl = cleanedUrl.slice(0, -1);
+  }
+
   unsplashConfig = {
-    url: url.replace(/\/+$/, ""),
+    url: cleanedUrl,
     accessKey,
   };
 }

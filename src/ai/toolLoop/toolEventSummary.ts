@@ -12,14 +12,16 @@ export type ToolEventSummaryInput = {
 };
 
 const oneLine = (value: unknown, maxLen = 140) => {
-  const raw =
-    typeof value === "string"
-      ? value
-      : value === undefined
-        ? ""
-        : value === null
-          ? "null"
-          : JSON.stringify(value);
+  let raw = "";
+  if (typeof value === "string") {
+    raw = value;
+  } else if (value === undefined) {
+    raw = "";
+  } else if (value === null) {
+    raw = "null";
+  } else {
+    raw = JSON.stringify(value);
+  }
   const collapsed = raw.replace(/\s+/g, " ").trim();
   if (collapsed.length <= maxLen) return collapsed;
   return `${collapsed.slice(0, Math.max(0, maxLen - 1))}…`;
@@ -33,7 +35,7 @@ type ToolEventSummarizer = (input: ToolEventSummaryInput) => ToolEvent | null;
 const summarizeReadFile: ToolEventSummarizer = (input) => {
   if (input.name !== "read_file") return null;
 
-  const path = String(input.effectiveArgs.path ?? "");
+  const path = typeof input.effectiveArgs.path === "string" ? input.effectiveArgs.path : "";
   const start =
     input.readFileMeta?.start ?? Number(input.effectiveArgs.start_line ?? 1);
   const end =
@@ -55,12 +57,12 @@ const summarizeApplyPatch: ToolEventSummarizer = (input) => {
       ? ((input.modelArgs as any).patch_string as any)
       : null;
   const fallback = getApplyPatchEventMeta(input.effectiveArgs);
-  const ok =
-    (input.toolResult as any)?.success === true
-      ? "success"
-      : (input.toolResult as any)?.success === false
-        ? "failure"
-        : "done";
+  let ok = "done";
+  if ((input.toolResult as any)?.success === true) {
+    ok = "success";
+  } else if ((input.toolResult as any)?.success === false) {
+    ok = "failure";
+  }
 
   return {
     name: input.name,
@@ -169,9 +171,10 @@ const summarizeUpdateProps: ToolEventSummarizer = (input) => {
     const v = (input.effectiveArgs as any)[k];
     return v !== undefined && v !== null;
   });
+  patchKeys.sort();
   const keysText =
     patchKeys.length > 0
-      ? ` keys=${oneLine(patchKeys.sort().join(","), 140)}`
+      ? ` keys=${oneLine(patchKeys.join(","), 140)}`
       : "";
 
   const errText =
@@ -205,9 +208,10 @@ const summarizeUpdateGlobalStyles: ToolEventSummarizer = (input) => {
       : "";
   const created = (input.toolResult as any)?.created;
   const createdText = typeof created === "boolean" ? ` created=${created}` : "";
+  tokenKeys.sort();
   const keysText =
     tokenKeys.length > 0
-      ? ` tokens=${oneLine(tokenKeys.sort().join(","), 160)}`
+      ? ` tokens=${oneLine(tokenKeys.join(","), 160)}`
       : "";
   const errText =
     successVal === false
@@ -223,7 +227,7 @@ const summarizeUpdateGlobalStyles: ToolEventSummarizer = (input) => {
 const summarizeSearch: ToolEventSummarizer = (input) => {
   if (input.name !== "search") return null;
 
-  const q = String(input.effectiveArgs.search_query ?? "").trim();
+  const q = typeof input.effectiveArgs.search_query === "string" ? input.effectiveArgs.search_query.trim() : "";
   const results = Array.isArray((input.toolResultRaw as any)?.results)
     ? (input.toolResultRaw as any).results
     : [];
@@ -237,20 +241,20 @@ const summarizeSearch: ToolEventSummarizer = (input) => {
 const summarizeListDir: ToolEventSummarizer = (input) => {
   if (input.name !== "list_dir") return null;
 
-  const p = String(input.effectiveArgs.path ?? "");
+  const p = typeof input.effectiveArgs.path === "string" ? input.effectiveArgs.path : "";
   const d = Number(input.effectiveArgs.depth ?? 1);
   return { name: input.name, summary: `list_dir ${p} depth=${d}` };
 };
 
 const summarizeCreateFile: ToolEventSummarizer = (input) => {
   if (input.name !== "create_file") return null;
-  const p = String(input.effectiveArgs.path ?? "");
+  const p = typeof input.effectiveArgs.path === "string" ? input.effectiveArgs.path : "";
   return { name: input.name, summary: `create_file ${p}` };
 };
 
 const summarizeDeleteFile: ToolEventSummarizer = (input) => {
   if (input.name !== "delete_file") return null;
-  const p = String(input.effectiveArgs.path ?? "");
+  const p = typeof input.effectiveArgs.path === "string" ? input.effectiveArgs.path : "";
   return { name: input.name, summary: `delete_file ${p}` };
 };
 

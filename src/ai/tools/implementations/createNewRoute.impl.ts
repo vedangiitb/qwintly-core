@@ -71,7 +71,7 @@ export const createCreateNewRouteImpl = (deps: WorkspaceDeps) => {
 
     const ensureRouteExists = async (segments: string[]) => {
       const parentDir = path.join(appDir, ...segments.slice(0, -1));
-      const seg = segments[segments.length - 1];
+      const seg = segments.slice(-1)[0];
       const finalDir = path.join(parentDir, seg);
 
       try {
