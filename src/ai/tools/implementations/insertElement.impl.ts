@@ -2,10 +2,8 @@ import { resolveUnsplashImagesDeep } from "../../../image/unsplash.service.js";
 import type { BuilderElement } from "../../../types/elements.js";
 import {
   ensureElementIds,
-  extractAllIdsDeep,
   findElementById,
-  resolvePageConfigJsonPath,
-  parsePageConfigJson,
+  loadAndPreparePageConfig,
   stringifyPageConfigJson,
   writeFileAtomic,
 } from "../helpers/pageConfigJson.helpers.js";
@@ -84,41 +82,10 @@ export const createInsertElementImpl = (deps: WorkspaceDeps) => {
 
     const before_id = String(parsedArgs.data.before_id ?? "").trim();
 
-    let configPath: string;
-    try {
-      configPath = await resolvePageConfigJsonPath(workspaceRoot, parsedArgs.data.route, fs);
-    } catch (err) {
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : String(err),
-      };
-    }
+    const prep = await loadAndPreparePageConfig(workspaceRoot, parsedArgs.data.route, fs);
+    if (!prep.success) return prep;
 
-    let before = "";
-    try {
-      before = await fs.readFile(configPath);
-    } catch (err) {
-      const code = (err as NodeJS.ErrnoException | null)?.code;
-      if (code === "ENOENT") return { success: false, error: "not found" };
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : String(err),
-      };
-    }
-
-    let parsed: ReturnType<typeof parsePageConfigJson>;
-    try {
-      parsed = parsePageConfigJson(before);
-    } catch (err) {
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : String(err),
-      };
-    }
-
-    const elements = parsed.elements ?? [];
-    const existingIds = extractAllIdsDeep(elements);
-    ensureElementIds(elements, existingIds);
+    const { configPath, elements, existingIds } = prep;
 
     // Clone + inject ids for the inserted element subtree.
     let toInsert: BuilderElement[];

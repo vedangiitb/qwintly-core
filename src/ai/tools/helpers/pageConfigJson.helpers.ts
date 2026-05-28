@@ -326,3 +326,53 @@ export const resolvePageConfigJsonPath = async (
   return exactPath;
 };
 
+export const loadAndPreparePageConfig = async (
+  workspaceRoot: string,
+  route: string,
+  fs: CoreFs,
+) => {
+  let configPath: string;
+  try {
+    configPath = await resolvePageConfigJsonPath(workspaceRoot, route, fs);
+  } catch (err) {
+    return {
+      success: false as const,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+
+  let before = "";
+  try {
+    before = await fs.readFile(configPath);
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException | null)?.code;
+    if (code === "ENOENT") return { success: false as const, error: "not found" };
+    return {
+      success: false as const,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+
+  let parsed: ReturnType<typeof parsePageConfigJson>;
+  try {
+    parsed = parsePageConfigJson(before);
+  } catch (err) {
+    return {
+      success: false as const,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+
+  const elements = parsed.elements ?? [];
+  const existingIds = extractAllIdsDeep(elements);
+  ensureElementIds(elements, existingIds);
+
+  return {
+    success: true as const,
+    configPath,
+    elements,
+    existingIds,
+  };
+};
+
+
