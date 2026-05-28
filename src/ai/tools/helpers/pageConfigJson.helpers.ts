@@ -246,7 +246,7 @@ export const getAvailableRoutes = async (deps: {
   };
 
   await scan(appDir);
-  return routes.sort();
+  return routes.sort((a, b) => a.localeCompare(b));
 };
 
 const isCatchAll = (segment: string): boolean =>

@@ -171,7 +171,7 @@ const summarizeUpdateProps: ToolEventSummarizer = (input) => {
     const v = (input.effectiveArgs as any)[k];
     return v !== undefined && v !== null;
   });
-  patchKeys.sort();
+  patchKeys.sort((a, b) => a.localeCompare(b));
   const keysText =
     patchKeys.length > 0
       ? ` keys=${oneLine(patchKeys.join(","), 140)}`
@@ -208,7 +208,7 @@ const summarizeUpdateGlobalStyles: ToolEventSummarizer = (input) => {
       : "";
   const created = (input.toolResult as any)?.created;
   const createdText = typeof created === "boolean" ? ` created=${created}` : "";
-  tokenKeys.sort();
+  tokenKeys.sort((a, b) => a.localeCompare(b));
   const keysText =
     tokenKeys.length > 0
       ? ` tokens=${oneLine(tokenKeys.join(","), 160)}`
