@@ -15,7 +15,11 @@ function stripCodeFences(input: string) {
 }
 
 export function parsePlannerTasksUnknown(value: unknown): PlannerTask[] {
-  return PlannerTasksSchema.parse(value) as PlannerTask[];
+  let arrayValue = value;
+  if (Array.isArray(value)) {
+    arrayValue = value.slice(0, 15);
+  }
+  return PlannerTasksSchema.parse(arrayValue) as PlannerTask[];
 }
 
 export function parsePlannerTasksJson(text: string): PlannerTask[] {
