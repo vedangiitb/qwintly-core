@@ -1,3 +1,11 @@
+## [1.6.2](https://github.com/vedangiitb/qwintly-core/compare/v1.6.1...v1.6.2) (2026-06-12)
+
+
+### Bug Fixes
+
+* configuring github trusted provider ([d788fc8](https://github.com/vedangiitb/qwintly-core/commit/d788fc80a06b363c02b64eb23cd745e9ef57b719))
+* sementic release version update ([eaaadaa](https://github.com/vedangiitb/qwintly-core/commit/eaaadaaccece9b342e618ff60ca62a9de4932681))
+
 ## [1.6.1](https://github.com/vedangiitb/qwintly-core/compare/v1.6.0...v1.6.1) (2026-06-12)
 
 
