@@ -1,3 +1,10 @@
+## [1.6.3](https://github.com/vedangiitb/qwintly-core/compare/v1.6.2...v1.6.3) (2026-06-12)
+
+
+### Bug Fixes
+
+* removing reduntent redis hash and setting TTL ([5776649](https://github.com/vedangiitb/qwintly-core/commit/57766498c719a179eadc1ac44674cec557da649f))
+
 ## [1.6.2](https://github.com/vedangiitb/qwintly-core/compare/v1.6.1...v1.6.2) (2026-06-12)
 
 
