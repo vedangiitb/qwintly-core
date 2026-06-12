@@ -1,3 +1,10 @@
+## [1.6.1](https://github.com/vedangiitb/qwintly-core/compare/v1.6.0...v1.6.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* fixing ci bugs ([8b7afe9](https://github.com/vedangiitb/qwintly-core/commit/8b7afe9281ec79ef627fd6fd474f332c15924639))
+
 # [1.6.0](https://github.com/vedangiitb/qwintly-core/compare/v1.5.0...v1.6.0) (2026-06-12)
 
 
