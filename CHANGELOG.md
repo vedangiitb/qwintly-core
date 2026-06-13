@@ -1,3 +1,10 @@
+## [1.6.4](https://github.com/vedangiitb/qwintly-core/compare/v1.6.3...v1.6.4) (2026-06-13)
+
+
+### Bug Fixes
+
+* update_props and update_classname bug fixes ([90ea398](https://github.com/vedangiitb/qwintly-core/commit/90ea398aa1321b63568b973b0a05ae01c974f666))
+
 ## [1.6.3](https://github.com/vedangiitb/qwintly-core/compare/v1.6.2...v1.6.3) (2026-06-12)
 
 
