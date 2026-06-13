@@ -1,3 +1,10 @@
+## [1.6.5](https://github.com/vedangiitb/qwintly-core/compare/v1.6.4...v1.6.5) (2026-06-13)
+
+
+### Bug Fixes
+
+* updating projectinfo index to include only routes and pages ([98a5e43](https://github.com/vedangiitb/qwintly-core/commit/98a5e43d7be4f115b42117658bf12e4d1bdde19d))
+
 ## [1.6.4](https://github.com/vedangiitb/qwintly-core/compare/v1.6.3...v1.6.4) (2026-06-13)
 
 
