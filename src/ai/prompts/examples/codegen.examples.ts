@@ -46,6 +46,21 @@ Tool call:
         "text": "Get Started",
         "onClick": { "kind": "route", "href": "/signup" }
       }
+    },
+    {
+      "id": "cta_image_wrap",
+      "parentId": "cta_section",
+      "type": "div",
+      "className": "w-24 h-24 rounded-full overflow-hidden"
+    },
+    {
+      "id": "cta_image",
+      "parentId": "cta_image_wrap",
+      "type": "image",
+      "className": "w-full h-full object-cover",
+      "props": {
+        "alt": "A team collaborating in a bright workspace"
+      }
     }
   ]
 }

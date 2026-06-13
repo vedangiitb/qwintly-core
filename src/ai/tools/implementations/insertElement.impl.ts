@@ -34,7 +34,7 @@ function reconstructTree(flatElements: any[]): BuilderElement[] {
     const parentNode = buildMap.get(flat.parentId);
     if (!parentNode) {
       throw new Error(
-        `Parent element with id '${flat.parentId}' not found in the list`,
+        `Parent element with id '${flat.parentId}' not found in the list. Please read the file using read_file tool to see the valid parent ids available. DO NOT do insert with same args without calling read_file tool.`,
       );
     }
     const currentNode = buildMap.get(flat.id);
@@ -60,7 +60,7 @@ export const createInsertElementImpl = (deps: WorkspaceDeps) => {
   ) => {
     const rawArgs =
       typeof routeOrArgs === "object" && routeOrArgs !== null
-        ? (routeOrArgs as Record<string, unknown>)
+        ? (routeOrArgs)
         : {
             route: routeOrArgs,
             parent_id: parentId,

@@ -54,7 +54,7 @@ export const codegenPrompt = (params: CodegenNodePromptParams) => {
        - Create missing routes with create_new_route.
        - For any tool arg named route, always use URL paths with forward slashes (e.g. '/', '/pricing'); never use '\\' or filesystem paths like 'app/pricing'.
        - insert_element supports optional before_id to insert before an existing sibling; if omitted or not found, it appends to the end. Use this to do things like inserting navbar before the main content area, etc.
-       - Include images whenever mentoned to be included. Just use alt tag for images. image src auto-generated from alt
+       - Include images whenever mentioned to be included. For images, set the type to 'image' and specify the description in the 'alt' prop under 'props' (e.g. "props": { "alt": "Description of the image" }). The image src will be auto-generated from this alt text. Do not concatenate props into the parentId.
        - lucide-react icons only
        - Prefer semantic Tailwind tokens (bg-background, text-foreground, border-border, ring-ring, etc.) over hardcoded colors (e.g. slate-*, bg-white) for global styles. If you need different global colors/radius, call update_global_styles first, then use token-based classes.
        - update_global_styles args MUST be a flat JSON object with token keys as optional params. Include at least 1 key.
