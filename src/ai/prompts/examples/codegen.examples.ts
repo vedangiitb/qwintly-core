@@ -13,7 +13,7 @@ Tool call:
   "elements": [
     {
       "id": "cta_section",
-      "parentId": "parent",
+      "parentId": "root",
       "type": "div",
       "className": "mt-10 flex items-center justify-between gap-6 rounded-2xl border border-border bg-background p-6 text-foreground"
     },
@@ -70,7 +70,7 @@ Tool call:
   - Always pass a complete \`className\` string (Tailwind only).
   - Use \`elements\` flat list to represent UI structures of arbitrary depth.
   - Link child elements to their parent in the array by setting \`parentId\` to the parent element's temporary \`id\`.
-  - The root element in the \`elements\` array must have \`parentId\` set to \`"parent"\`.
+  - The root element in the \`elements\` array must have \`parentId\` set to match the target \`parent_id\` parameter of the tool.
   - Optional \`before_id\` inserts before an existing sibling; omit it to append at the end.
   - Use the returned \`inserted_id\` for follow-up updates.`,
 

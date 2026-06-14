@@ -50,7 +50,7 @@ export const codegenPrompt = (params: CodegenNodePromptParams) => {
       - submit_codegen_done: Finish task
 
        Rules:
-       - Use \`insert_element\` to insert an entire UI tree at once. Pass a flat array of elements under \`elements\`. The root element of your new subtree must have \`parentId\` set to \`\"parent\"\`. All other elements in the array must set \`parentId\` matching the temporary \`id\` of their parent in that same array.
+        - Use \`insert_element\` to insert an entire UI tree at once. Pass a flat array of elements under \`elements\`. The root element of your new subtree must have \`parentId\` set to match the \`parent_id\` parameter of the tool. All other elements in the array must set \`parentId\` matching the temporary \`id\` of their parent in that same array.
        - Create missing routes with create_new_route.
        - For any tool arg named route, always use URL paths with forward slashes (e.g. '/', '/pricing'); never use '\\' or filesystem paths like 'app/pricing'.
        - insert_element supports optional before_id to insert before an existing sibling; if omitted or not found, it appends to the end. Use this to do things like inserting navbar before the main content area, etc.
