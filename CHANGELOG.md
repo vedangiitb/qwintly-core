@@ -1,3 +1,10 @@
+## [1.6.6](https://github.com/vedangiitb/qwintly-core/compare/v1.6.5...v1.6.6) (2026-06-14)
+
+
+### Bug Fixes
+
+* Fixing insert_element parent id bugs and preventing root element deletion ([9e8cc95](https://github.com/vedangiitb/qwintly-core/commit/9e8cc9593aa2a99188f363376b92d02a6dea7b8d))
+
 ## [1.6.5](https://github.com/vedangiitb/qwintly-core/compare/v1.6.4...v1.6.5) (2026-06-13)
 
 
