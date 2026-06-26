@@ -4,6 +4,8 @@ import { createReadFileImpl } from "./readFile.impl.js";
 import { createSearchImpl, type SearchDeps } from "./search.impl.js";
 import { createUpdateGlobalStylesImpl } from "./updateGlobalStyles.impl.js";
 import { createModifyElementImpl } from "./modifyElement.impl.js";
+import { createModifyStateImpl } from "./modifyState.impl.js";
+import { createModifyComponentImpl } from "./modifyComponent.impl.js";
 
 export { DEFAULT_NOT_FOUND_RESPONSE } from "./workspaceDeps.js";
 export type {
@@ -22,6 +24,8 @@ export {
 } from "./search.impl.js";
 export { createUpdateGlobalStylesImpl } from "./updateGlobalStyles.impl.js";
 export { createModifyElementImpl } from "./modifyElement.impl.js";
+export { createModifyStateImpl } from "./modifyState.impl.js";
+export { createModifyComponentImpl } from "./modifyComponent.impl.js";
 
 export const createWorkspaceToolImpls = (deps: SearchDeps) => {
   const readFileImpl = createReadFileImpl(deps);
@@ -30,6 +34,8 @@ export const createWorkspaceToolImpls = (deps: SearchDeps) => {
   const updateGlobalStylesImpl = createUpdateGlobalStylesImpl(deps);
   const createNewRouteImpl = createCreateNewRouteImpl(deps);
   const modifyElementImpl = createModifyElementImpl(deps);
+  const modifyStateImpl = createModifyStateImpl(deps);
+  const modifyComponentImpl = createModifyComponentImpl(deps);
 
   return {
     readFileImpl,
@@ -38,5 +44,7 @@ export const createWorkspaceToolImpls = (deps: SearchDeps) => {
     updateGlobalStylesImpl,
     createNewRouteImpl,
     modifyElementImpl,
+    modifyStateImpl,
+    modifyComponentImpl,
   };
 };

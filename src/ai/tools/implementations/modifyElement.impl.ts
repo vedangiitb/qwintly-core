@@ -80,6 +80,11 @@ const applyPropsPatch = (el: BuilderElement, patch: any) => {
   apply("size", patch.size);
   apply("color", patch.color);
   apply("strokeWidth", patch.strokeWidth);
+
+  apply("componentId", patch.componentId);
+  apply("inputs", patch.inputs);
+  apply("bindState", patch.bindState);
+  apply("bindStateScope", patch.bindStateScope);
 };
 
 function resolveId(

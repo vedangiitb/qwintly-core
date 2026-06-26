@@ -5,9 +5,9 @@ export const OnClickActionSchema = {
   properties: {
     kind: {
       type: Type.STRING,
-      enum: ["route", "back", "reload", "external"],
+      enum: ["route", "back", "reload", "external", "setState"],
       description:
-        "What happens when the element is clicked. 'route' navigates within the app, 'external' opens a URL, 'back' goes back, 'reload' refreshes.",
+        "What happens when the element is clicked. 'route' navigates within the app, 'external' opens a URL, 'back' goes back, 'reload' refreshes, 'setState' updates state variables.",
     },
     href: {
       type: Type.STRING,
@@ -21,6 +21,23 @@ export const OnClickActionSchema = {
     newTab: {
       type: Type.BOOLEAN,
       description: "For kind='external': open link in a new tab.",
+    },
+    key: {
+      type: Type.STRING,
+      description: "For kind='setState': key of state variable to update.",
+    },
+    value: {
+      description: "For kind='setState': value to set the state key to. (Optional for toggle, increment, decrement).",
+    },
+    operator: {
+      type: Type.STRING,
+      enum: ["set", "toggle", "increment", "decrement"],
+      description: "For kind='setState': how to update the key. Defaults to 'set'.",
+    },
+    scope: {
+      type: Type.STRING,
+      enum: ["page", "global"],
+      description: "For kind='setState': scope of state variable to modify. Defaults to 'page'.",
     },
   },
   required: ["kind"],
@@ -77,6 +94,25 @@ export const BuilderElementPropsSchema = {
     strokeWidth: {
       type: Type.NUMBER,
       description: "For 'icon': stroke width.",
+    },
+
+    // components and state bindings
+    componentId: {
+      type: Type.STRING,
+      description: "For 'component': the ID of the component to render.",
+    },
+    inputs: {
+      type: Type.OBJECT,
+      description: "For 'component': key-value pairs of parameters passed to the component.",
+    },
+    bindState: {
+      type: Type.STRING,
+      description: "For 'input' and 'textarea': key of state variable to bind to for two-way binding.",
+    },
+    bindStateScope: {
+      type: Type.STRING,
+      enum: ["page", "global"],
+      description: "Scope of two-way state binding. Defaults to 'page'.",
     },
   },
 };

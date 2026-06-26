@@ -11,6 +11,8 @@ export const ELEMENT_TYPES = [
   "textarea",
   "link",
   "icon",
+  "component",
+  "slot",
 ] as const;
 
 export const ModifyElementSchema = {

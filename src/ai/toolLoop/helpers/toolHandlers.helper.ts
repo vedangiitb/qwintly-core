@@ -53,6 +53,14 @@ export function createToolHandlers(params: {
       }
       return result;
     },
+    modify_state: async (args) => {
+      const result = await params.impls.modifyStateImpl(args);
+      return result;
+    },
+    modify_component: async (args) => {
+      const result = await params.impls.modifyComponentImpl(args);
+      return result;
+    },
     get_available_routes: async (args) => {
       const routes = await getAvailableRoutes({ workspaceRoot: params.workspaceRoot, fs: nodeFs });
       return { success: true, routes };

@@ -10,6 +10,8 @@ export const ELEMENT_TYPES = [
   "textarea",
   "link",
   "icon",
+  "component",
+  "slot",
 ] as const;
 
 const normalizeInternalRoutePath = (value: unknown) => {
@@ -52,6 +54,13 @@ export const OnClickActionZod = z.discriminatedUnion("kind", [
     href: z.string().min(1),
     newTab: z.boolean().optional(),
   }),
+  z.object({
+    kind: z.literal("setState"),
+    key: z.string().min(1),
+    value: z.any().optional(),
+    operator: z.enum(["set", "toggle", "increment", "decrement"]).optional(),
+    scope: z.enum(["page", "global"]).optional(),
+  }),
 ]);
 
 const BuilderElementPropsZod = z
@@ -69,6 +78,10 @@ const BuilderElementPropsZod = z
     size: z.number().optional(),
     color: z.string().optional(),
     strokeWidth: z.number().optional(),
+    componentId: z.string().optional(),
+    inputs: z.record(z.string(), z.any()).optional(),
+    bindState: z.string().optional(),
+    bindStateScope: z.enum(["page", "global"]).optional(),
   })
   .passthrough();
 
