@@ -11,10 +11,10 @@ export const codegenTools = (): Tool[] => {
     {
       functionDeclarations: [
         ReadFileSchema,
-        UpdateGlobalStylesSchema,
+        GetAvailableRoutesSchema,
         CreateNewRouteSchema,
         ModifyElementSchema,
-        GetAvailableRoutesSchema,
+        UpdateGlobalStylesSchema,
         SubmitCodegenDoneSchema,
       ],
     },
